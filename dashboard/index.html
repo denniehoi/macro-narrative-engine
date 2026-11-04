@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Macro-narratieven</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans+Condensed:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #e9efec; --surface: #f7faf8; --ink: #13282d; --muted: #566a6d; --rule: #c6d2ce;
+  --accent: #1d6b74; --accent-ink: #ffffff; --danger: #993a31; --ok: #2f7a4a; --warn: #a9701c;
+  --t1: #1d6b74; --t2: #c0892c; --t3: #7a4e7e; --t4: #4f8d61; --t5: #4a679a; --t6: #8b8a33;
+  --cash: #8fa09c; --focus: #c0892c;
+  --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --text: "IBM Plex Sans Condensed", "Arial Narrow", ui-sans-serif, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0e191c; --surface: #142327; --ink: #e2ebe8; --muted: #93a7a9; --rule: #293c40;
+    --accent: #4fb0ba; --accent-ink: #0b1a1d; --danger: #e07a6e; --ok: #6cc28c; --warn: #e3ad55;
+    --t1: #4fb0ba; --t2: #e0ab4f; --t3: #b88bbb; --t4: #7cc08f; --t5: #86a3d6; --t6: #c3c26a; --cash: #5f7470;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0e191c; --surface: #142327; --ink: #e2ebe8; --muted: #93a7a9; --rule: #293c40;
+  --accent: #4fb0ba; --accent-ink: #0b1a1d; --danger: #e07a6e; --ok: #6cc28c; --warn: #e3ad55;
+  --t1: #4fb0ba; --t2: #e0ab4f; --t3: #b88bbb; --t4: #7cc08f; --t5: #86a3d6; --t6: #c3c26a; --cash: #5f7470;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 400 15px/1.45 var(--text);
+  font-variant-numeric: tabular-nums; }
+main { max-width: 1120px; margin: 0 auto; padding: 20px 16px 64px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: 26px; line-height: 1.1; }
+h2 { font-size: 20px; line-height: 1.2; margin-bottom: 4px; }
+h3 { font-size: 16px; }
+p { margin: 0; }
+a { color: var(--accent); }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 3px; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.hidden { display: none !important; }
+
+header.top { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: baseline; justify-content: space-between;
+  padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
+.runline { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+.status { display: inline-flex; align-items: center; gap: 6px; }
+.status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.status.ok::before { background: var(--ok); } .status.partial::before { background: var(--warn); }
+.status.failed::before { background: var(--danger); }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; text-decoration: underline;
+  text-underline-offset: 2px; }
+
+section { margin-top: 32px; }
+.section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 12px; }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; }
+
+/* Hero: de pie van vandaag */
+.hero { display: grid; grid-template-columns: minmax(260px, 380px) 1fr; gap: 28px; align-items: center; margin-top: 24px; }
+.donut-wrap { position: relative; width: 100%; max-width: 380px; aspect-ratio: 1; }
+.donut-wrap svg { width: 100%; height: 100%; display: block; }
+.donut-center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
+.donut-center .big { font-family: var(--display); font-size: clamp(40px, 9vw, 60px); font-weight: 700; line-height: 1; }
+.legend { list-style: none; margin: 0; padding: 0; }
+.legend li { display: grid; grid-template-columns: 14px 1fr auto; gap: 4px 12px; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.legend li:last-child { border-bottom: 0; }
+.swatch { width: 14px; height: 14px; border-radius: 3px; }
+.legend .name { font-weight: 600; }
+.legend .w { font-family: var(--display); font-size: 22px; font-weight: 700; text-align: right; }
+.legend .sub { grid-column: 2 / 4; display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 13px; }
+.ibar { flex: 0 0 110px; height: 5px; background: var(--rule); border-radius: 3px; overflow: hidden; }
+.ibar span { display: block; height: 100%; background: currentColor; }
+.heat { margin-top: 14px; display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 14px; }
+.heat strong { color: var(--ink); font-family: var(--display); font-size: 18px; }
+
+/* Goedkeuringen */
+.approvals { display: grid; gap: 12px; }
+.approval { padding: 16px; border-left: 4px solid var(--warn); }
+.approval h3 { margin-bottom: 6px; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 8px 0; font-size: 14px; }
+.facts b { font-weight: 600; }
+.approval ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); font-size: 14px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+.actions input { flex: 1 1 220px; min-width: 0; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 4px;
+  background: var(--paper); }
+.btn { padding: 8px 14px; border-radius: 4px; border: 1px solid var(--accent); background: var(--accent);
+  color: var(--accent-ink); font-weight: 600; cursor: pointer; }
+.btn.secondary { background: transparent; color: var(--ink); border-color: var(--rule); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Tabellen */
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 500; color: var(--muted); white-space: nowrap; }
+td.num, th.num { text-align: right; white-space: nowrap; }
+tbody tr.row { cursor: pointer; }
+tbody tr.row:hover td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+tr.detail td { background: var(--paper); padding: 14px 16px 18px; }
+.tname { display: flex; gap: 8px; align-items: flex-start; font-weight: 600; }
+.tname .swatch { margin-top: 3px; flex: none; }
+.tag { display: inline-block; padding: 0 6px; border-radius: 3px; font-size: 12px; font-weight: 500;
+  border: 1px solid var(--rule); color: var(--muted); margin-left: 4px; white-space: nowrap; }
+.gates { display: inline-flex; gap: 4px; }
+.gate { width: 22px; height: 22px; display: inline-grid; place-content: center; border-radius: 3px; font-size: 12px;
+  font-weight: 600; border: 1px solid var(--rule); }
+.gate.pass { color: var(--ok); } .gate.fail { color: var(--danger); border-color: var(--danger); }
+.gate.open { color: var(--muted); border-style: dashed; }
+.detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 28px; }
+.detail-grid dt { color: var(--muted); font-size: 13px; }
+.detail-grid dd { margin: 2px 0 0; }
+.basket { margin-top: 16px; }
+.basket table { font-size: 13px; }
+
+/* Verloop */
+.chart { padding: 12px 12px 8px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.axis text { fill: var(--muted); font-size: 11px; font-family: var(--text); }
+.axis line { stroke: var(--rule); }
+
+.kv { display: flex; flex-wrap: wrap; gap: 6px 26px; margin-bottom: 12px; font-size: 14px; }
+.kv b { font-weight: 600; }
+.notice { padding: 12px 14px; border-radius: 6px; background: color-mix(in srgb, var(--warn) 14%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--rule)); font-size: 14px; }
+.empty { padding: 18px; color: var(--muted); }
+
+/* Login */
+.login { max-width: 380px; margin: 12vh auto 0; padding: 28px; }
+.login h1 { margin-bottom: 6px; }
+.login label { display: block; margin-top: 14px; font-size: 14px; color: var(--muted); }
+.login input { width: 100%; margin-top: 4px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 4px;
+  background: var(--paper); }
+.login .btn { margin-top: 18px; width: 100%; padding: 10px; }
+.error { color: var(--danger); margin-top: 10px; font-size: 14px; }
+
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--paper);
+  padding: 10px 16px; border-radius: 6px; font-size: 14px; max-width: calc(100% - 32px); }
+
+@media (max-width: 720px) {
+  .hero { grid-template-columns: 1fr; gap: 18px; }
+  .donut-wrap { max-width: 300px; margin: 0 auto; }
+  .hide-sm { display: none; }
+  th, td { padding: 8px 6px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .donut-wrap path { transition: opacity .2s; }
+}
+</style>
+</head>
+<body>
+<main id="app">
+  <div class="empty">Laden…</div>
+</main>
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
+<script>
+// Publiek per ontwerp: toegang wordt afgedwongen door login + row level security in Supabase.
+const SUPABASE_URL = "https://cmmikebzpakirfowzqjp.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtbWlrZWJ6cGFraXJmb3d6cWpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM3OTgzMTQsImV4cCI6MjEwOTM3NDMxNH0.rsel3RipPL5iR6WPydNiW0FLvtv_tx56mWnVOcvILE8";
+const MONTHLY_TOKEN_LIMIT = 4500;   // gelijk houden met config/settings.yaml
+const ENTER_DAYS = 3;
+const NEXT_RUN = "elke ochtend rond 06:15";
+
+const DEMO = new URLSearchParams(location.search).has("demo");
+const app = document.getElementById("app");
+const nf0 = new Intl.NumberFormat("nl-NL", { maximumFractionDigits: 0 });
+const nf1 = new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const nf2 = new Intl.NumberFormat("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const eur = new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+const dfLong = new Intl.DateTimeFormat("nl-NL", { weekday: "long", day: "numeric", month: "long" });
+const dfShort = new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: "short" });
+const dfTime = new Intl.DateTimeFormat("nl-NL", { hour: "2-digit", minute: "2-digit" });
+
+let sb = null, state = null, openRow = null;
+
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const safeUrl = (u) => (/^https?:\/\//i.test(u || "") ? u : null);
+const pct = (x, f = nf0) => (x == null ? "–" : f.format(x * 100) + "%");
+const num = (x, f = nf2) => (x == null ? "–" : f.format(x));
+const day = (s) => (s ? new Date(String(s).slice(0, 10) + "T12:00:00") : null);
+const short = (s) => (s ? dfShort.format(day(s)) : "–");
+
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.remove("hidden");
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add("hidden"), 4200);
+}
+
+// ---------- data ------------------------------------------------------------------
+async function loadDemo() {
+  const r = await fetch("demo-data.json");
+  const d = await r.json();
+  return { me: d.app_users[0], ...d, demo: true };
+}
+
+async function loadLive(email) {
+  const since = new Date(Date.now() - 95 * 864e5).toISOString().slice(0, 10);
+  const recent = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+  const monthStart = new Date().toISOString().slice(0, 8) + "01";
+  const q = (p) => p.then(({ data, error }) => { if (error) throw error; return data || []; });
+  const [users, topics, daily, approvals, baskets, snaps, runs, usage] = await Promise.all([
+    q(sb.from("app_users").select("*")),
+    q(sb.from("topics").select("*").in("status", ["active", "on_deck", "radar"])),
+    q(sb.from("topic_daily").select("topic_id,day,status,articles,alignment,volume_z,r_score,n,m,d,p,i_score,gates,gates_pass,stale").gte("day", recent).order("day", { ascending: false }).limit(1000)),
+    q(sb.from("approvals").select("*").order("created_at", { ascending: false }).limit(30)),
+    q(sb.from("baskets").select("*").in("status", ["active", "exit"]).order("created_at", { ascending: false }).limit(60)),
+    q(sb.from("portfolio_snapshots").select("*").gte("day", since).order("day")),
+    q(sb.from("runs").select("id,run_day,started_at,finished_at,status,errors,newsapi_tokens,llm_input_tokens,llm_output_tokens,web_searches,summary").order("started_at", { ascending: false }).limit(10)),
+    q(sb.from("api_usage").select("*").gte("day", monthStart)),
+  ]);
+  const ids = baskets.map((b) => b.id);
+  const members = ids.length ? await q(sb.from("basket_members").select("*").in("basket_id", ids)) : [];
+  const me = users.find((u) => u.email === email.toLowerCase());
+  return { me, app_users: users, topics, topic_daily: daily, approvals, baskets, basket_members: members,
+           portfolio_snapshots: snaps, runs, api_usage: usage, demo: false };
+}
+
+function prepare(d) {
+  const snaps = [...d.portfolio_snapshots].sort((a, b) => a.day.localeCompare(b.day));
+  const snap = snaps[snaps.length - 1] || null;
+  const tracked = d.topics.filter((t) => ["active", "on_deck", "radar"].includes(t.status));
+  const byId = Object.fromEntries(d.topics.map((t) => [t.id, t]));
+  const lastDay = {};
+  for (const r of d.topic_daily) if (!lastDay[r.topic_id] || r.day > lastDay[r.topic_id].day) lastDay[r.topic_id] = r;
+  // vaste kleur per topic in volgorde van eerste verschijning in de historie
+  const order = [];
+  for (const s of snaps) for (const tw of s.topic_weights) if (!order.includes(tw.topic_id)) order.push(tw.topic_id);
+  for (const t of tracked) if (!order.includes(t.id)) order.push(t.id);
+  const color = (id) => `var(--t${(order.indexOf(id) % 6) + 1})`;
+  const membersBy = {};
+  for (const m of d.basket_members) (membersBy[m.basket_id] ||= []).push(m);
+  const basketOf = {};
+  for (const b of d.baskets) if (b.status === "active") basketOf[b.topic_id] = { ...b, members: (membersBy[b.id] || []).sort((x, y) => y.weight - x.weight) };
+  const runs = [...d.runs].sort((a, b) => String(b.run_day).localeCompare(String(a.run_day))
+    || String(b.started_at).localeCompare(String(a.started_at)));
+  const tokensMonth = d.api_usage.filter((u) => u.service === "newsapi").reduce((s, u) => s + u.units, 0);
+  return { ...d, snaps, snap, tracked, byId, lastDay, color, basketOf, runs, tokensMonth };
+}
+
+// ---------- weergave ---------------------------------------------------------------
+function render() {
+  const s = state;
+  if (!s.me) {
+    app.innerHTML = `<div class="panel login"><h1>Geen toegang</h1>
+      <p class="muted" style="margin-top:8px">Je bent ingelogd, maar dit e-mailadres staat niet op de lijst. Vraag de beheerder om je toe te voegen.</p>
+      <button class="btn secondary" style="margin-top:18px" onclick="logout()">Uitloggen</button></div>`;
+    return;
+  }
+  app.innerHTML = [header(), s.demo ? `<p class="notice" style="margin-top:16px">Voorbeelddata uit een gesimuleerde maand. Geen echte posities.</p>` : "",
+    approvalsSection(), hero(), activeSection(), historySection(), portfolioSection(), onDeckSection(), runsSection()].join("");
+  bind();
+}
+
+function header() {
+  const r = state.runs[0];
+  const when = r ? `${dfLong.format(day(r.run_day))}, ${r.finished_at ? dfTime.format(new Date(r.finished_at)) : "bezig"}` : "nog geen run";
+  const label = { ok: "run geslaagd", partial: "run met waarschuwingen", failed: "run mislukt", running: "run bezig" }[r?.status] || "";
+  return `<header class="top">
+    <h1>Macro-narratieven</h1>
+    <div class="runline small">
+      <span class="status ${esc(r?.status)}">${esc(label)}</span>
+      <span class="muted">${esc(when)}</span>
+      <span class="muted">${esc(state.me.display_name || state.me.email)}</span>
+      ${state.demo ? "" : `<button class="linkbtn" onclick="changePassword()">Wachtwoord wijzigen</button>
+      <button class="linkbtn" onclick="logout()">Uitloggen</button>`}
+    </div></header>`;
+}
+
+function hatch() {
+  return `<defs><pattern id="hatch" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)">
+    <rect width="7" height="7" fill="var(--surface)"/><line x1="0" y1="0" x2="0" y2="7" stroke="var(--cash)" stroke-width="3"/></pattern></defs>`;
+}
+
+function arc(cx, cy, r0, r1, a0, a1) {
+  const p = (r, a) => [cx + r * Math.sin(a), cy - r * Math.cos(a)];
+  if (a1 - a0 >= 2 * Math.PI - 1e-6) a1 = a0 + 2 * Math.PI - 1e-4;
+  const large = a1 - a0 > Math.PI ? 1 : 0;
+  const [x0, y0] = p(r1, a0), [x1, y1] = p(r1, a1), [x2, y2] = p(r0, a1), [x3, y3] = p(r0, a0);
+  return `M${x0},${y0} A${r1},${r1} 0 ${large} 1 ${x1},${y1} L${x2},${y2} A${r0},${r0} 0 ${large} 0 ${x3},${y3} Z`;
+}
+
+function hero() {
+  const snap = state.snap;
+  if (!snap) return `<section><div class="panel empty">Nog geen run. Na de eerste dagelijkse run verschijnt hier de verdeling.</div></section>`;
+  const slices = snap.topic_weights.filter((t) => t.weight > 0).map((t) => ({ ...t, fill: state.color(t.topic_id) }));
+  if (snap.cash > 0.0005) slices.push({ title: "Cash", weight: snap.cash, fill: "url(#hatch)", cash: true });
+  let a = 0;
+  const paths = slices.map((sl) => {
+    const a1 = a + sl.weight * 2 * Math.PI;
+    const d = arc(100, 100, 58, 96, a + 0.012, a1 - 0.012);
+    a = a1;
+    return `<path d="${d}" fill="${sl.fill}" ${sl.cash ? 'stroke="var(--cash)" stroke-width="1"' : ""}><title>${esc(sl.title)}: ${pct(sl.weight)}</title></path>`;
+  }).join("");
+  const invested = 1 - snap.cash;
+  const legend = slices.map((sl) => `<li>
+      <span class="swatch" style="background:${sl.cash ? "transparent" : sl.fill};${sl.cash ? "border:2px solid var(--cash)" : ""}"></span>
+      <span class="name">${esc(sl.title)}${sl.regime === "shock" ? '<span class="tag">shock</span>' : ""}</span>
+      <span class="w">${pct(sl.weight)}</span>
+      <span class="sub">${sl.cash ? "Geen topic boven de drempel of gewicht boven de cap van 25%"
+        : `<span class="ibar" style="color:${sl.fill}"><span style="width:${Math.max(0, Math.min(100, sl.i_score || 0))}%"></span></span> I-score ${num(sl.i_score, nf0)}`}</span>
+    </li>`).join("");
+  const nActive = snap.topic_weights.length;
+  return `<section class="hero" aria-label="Verdeling van vandaag">
+    <div class="donut-wrap"><svg viewBox="0 0 200 200" role="img" aria-label="Verdeling over topics en cash">${hatch()}${paths}</svg>
+      <div class="donut-center"><div class="big">${pct(invested)}</div><div class="muted">belegd in ${nActive} ${nActive === 1 ? "topic" : "topics"}</div></div></div>
+    <div>
+      <h2>Verdeling ${esc(dfLong.format(day(snap.day)))}</h2>
+      <ul class="legend">${legend}</ul>
+      <div class="heat"><span>Hitte-index <strong>${num(snap.heat_index, nf0)}</strong> van 100 (gemiddelde I-score van Active)</span></div>
+    </div></section>`;
+}
+
+function approvalsSection() {
+  const pending = state.approvals.filter((a) => a.status === "pending" && new Date(a.expires_at) > new Date());
+  const decided = state.approvals.filter((a) => a.status !== "pending").slice(0, 4);
+  if (!pending.length && !decided.length) return "";
+  const canDecide = state.me.role === "approver" && !state.demo;
+  const cards = pending.map((a) => {
+    const p = a.payload || {};
+    const hours = Math.max(0, Math.round((new Date(a.expires_at) - new Date()) / 36e5));
+    const t = state.byId[a.topic_id];
+    const isShock = a.kind === "shock";
+    const markets = (p.polymarket || []).map((m) => `<li>${esc(m.question)}: ${pct(m.prob_yes)} ja${m.one_day_change != null ? `, ${m.one_day_change >= 0 ? "+" : ""}${nf0.format(m.one_day_change * 100)} pp vandaag` : ""}, liquiditeit $${nf0.format(m.liquidity || 0)}${m.end_date ? `, loopt tot ${short(m.end_date)}` : ""}</li>`).join("");
+    return `<article class="panel approval">
+      <h3>${isShock ? "Shock toelaten als Active?" : "Topics samenvoegen?"} ${esc(t?.title || "")}</h3>
+      <p>${esc(a.summary)}</p>
+      ${isShock ? `<div class="facts"><span>Volume <b>${p.volume_z != null ? "z " + nf1.format(p.volume_z) : "onbekend"}</b></span>
+        <span>Alignment <b>${num(p.alignment)}</b></span><span>Artikelen gisteren <b>${num(p.articles, nf0)}</b></span>
+        <span>Verloopt over <b>${hours} uur</b></span></div>
+        <p class="small muted">${esc(p.driver || "")}</p>
+        ${p.headlines?.length ? `<ul>${p.headlines.slice(0, 5).map((h) => `<li>${esc(h)}</li>`).join("")}</ul>` : ""}
+        ${markets ? `<p class="small" style="margin-top:8px">Polymarket</p><ul>${markets}</ul>` : ""}
+        <p class="small muted" style="margin-top:8px">Na toelating geldt 7 dagen bescherming; de gates voor these, mandje en resolutie blijven gelden.</p>`
+        : `<div class="facts"><span>Verloopt over <b>${hours} uur</b></span></div>`}
+      <div class="actions">
+        <input type="text" id="note-${a.id}" placeholder="Notitie (optioneel)" ${canDecide ? "" : "disabled"} aria-label="Notitie bij besluit">
+        <button class="btn" data-decide="approved" data-id="${a.id}" ${canDecide ? "" : "disabled"}>${isShock ? "Toelaten" : "Samenvoegen"}</button>
+        <button class="btn secondary" data-decide="rejected" data-id="${a.id}" ${canDecide ? "" : "disabled"}>${isShock ? "Afwijzen" : "Apart houden"}</button>
+        ${canDecide ? "" : `<span class="small muted">${state.demo ? "Niet beschikbaar in voorbeeldmodus" : "Alleen goedkeurders kunnen beslissen"}</span>`}
+      </div></article>`;
+  }).join("");
+  const label = { approved: "goedgekeurd", rejected: "afgewezen", expired: "verlopen", applied: "verwerkt" };
+  const log = decided.length ? `<p class="small muted" style="margin-top:10px">Recente besluiten: ${decided.map((a) =>
+    `${esc(state.byId[a.topic_id]?.title || "topic")} ${label[a.status] || a.status}${a.decided_by ? " door " + esc(a.decided_by) : ""}${a.note ? ` (${esc(a.note)})` : ""}`).join("; ")}</p>` : "";
+  return `<section aria-label="Goedkeuringen"><div class="section-head"><h2>${pending.length ? `${pending.length} ${pending.length === 1 ? "besluit" : "besluiten"} nodig` : "Besluiten"}</h2>
+    ${pending.length ? `<span class="small muted">Wordt verwerkt bij de volgende run, ${NEXT_RUN}</span>` : ""}</div>
+    <div class="approvals">${cards}</div>${log}</section>`;
+}
+
+const GATES = [["thesis", "T", "These: alignment 7 dagen ≥ 0,6"], ["horizon", "H", "Horizon ≥ 3 maanden"],
+  ["investable", "M", "Mandje: minstens 4 geldige tickers"], ["unresolved", "L", "Lopend: niet opgelost"]];
+function gatesHtml(g) {
+  g = g || {};
+  return `<span class="gates">${GATES.map(([k, l, title]) => {
+    const v = g[k]; const cls = v === true ? "pass" : v === false ? "fail" : "open";
+    const word = v === true ? "geslaagd" : v === false ? "faalt" : "nog niet getoetst";
+    return `<span class="gate ${cls}" title="${esc(title)}: ${word}" aria-label="${esc(title)}: ${word}">${l}</span>`;
+  }).join("")}</span>`;
+}
+
+function activeSection() {
+  const weights = Object.fromEntries((state.snap?.topic_weights || []).map((t) => [t.topic_id, t.weight]));
+  const active = state.tracked.filter((t) => t.status === "active")
+    .sort((a, b) => (state.lastDay[b.id]?.i_score || 0) - (state.lastDay[a.id]?.i_score || 0));
+  if (!active.length) return `<section><h2>Active topics</h2><div class="panel empty">Geen topic haalt de drempel. Alles staat in cash.</div></section>`;
+  const rows = active.map((t) => {
+    const r = state.lastDay[t.id] || {};
+    const prot = t.protected_until && day(t.protected_until) >= day(state.snap?.day);
+    return `<tr class="row" data-topic="${t.id}" tabindex="0" aria-expanded="${openRow === t.id}">
+      <td><div class="tname"><span class="swatch" style="background:${state.color(t.id)}"></span><span>${esc(t.title)}${t.regime === "shock" ? '<span class="tag">shock</span>' : ""}${prot ? '<span class="tag">beschermd</span>' : ""}</span></div></td>
+      <td class="num"><b>${num(r.i_score, nf0)}</b></td>
+      <td class="num hide-sm">${num(r.n)}</td><td class="num hide-sm">${num(r.m)}</td><td class="num hide-sm">${num(r.d)}</td><td class="num hide-sm">${num(r.p)}</td>
+      <td>${gatesHtml(r.gates)}</td>
+      <td class="num hide-sm">${short(t.promoted_at)}</td>
+      <td class="num">${pct(weights[t.id])}</td></tr>
+      ${openRow === t.id ? `<tr class="detail"><td colspan="9">${topicDetail(t, r)}</td></tr>` : ""}`;
+  }).join("");
+  return `<section aria-label="Active topics"><div class="section-head"><h2>Active topics</h2>
+    <span class="small muted">Instap: I ≥ 60 drie dagen op rij. Uitstap: I &lt; 45 of een gate die 3 dagen faalt. Klik een rij voor mandje en onderbouwing.</span></div>
+    <div class="panel tablewrap"><table><thead><tr><th>Topic</th><th class="num">I</th>
+      <th class="num hide-sm" title="Narratief: percentiel van de aandacht">N</th><th class="num hide-sm" title="Marktbevestiging: 20-daagse beweging in σ">M</th>
+      <th class="num hide-sm" title="Houdbaarheid">D</th><th class="num hide-sm" title="Ingeprijsd">P</th>
+      <th>Gates</th><th class="num hide-sm">Active sinds</th><th class="num">Gewicht</th></tr></thead>
+      <tbody>${rows}</tbody></table></div></section>`;
+}
+
+const HORIZON = { lt_3m: "korter dan 3 maanden", "3_6m": "3 tot 6 maanden", "6_12m": "6 tot 12 maanden", gt_12m: "langer dan 12 maanden" };
+const TIER = { pure_play: "Pure play", pick_and_shovel: "Pick-and-shovel", second_order: "Second order" };
+function topicDetail(t, r) {
+  const meta = t.meta || {};
+  const bms = (t.benchmarks || []).map((b) => `${esc(b.symbol)} ${b.direction > 0 ? "omhoog" : "omlaag"}`).join(", ") || "nog niet gekozen";
+  const pm = (meta.polymarket || []).map((m) => `${esc(m.question)} (${pct(m.prob_yes)})`).join("; ");
+  const b = state.basketOf[t.id];
+  const basket = b ? `<div class="basket"><h3>Mandje <span class="small muted">versie ${esc(b.topic_version)}, samengesteld ${short(b.notes?.day || b.created_at)} (${esc(b.reason)})</span></h3>
+    <div class="tablewrap"><table><thead><tr><th>Ticker</th><th>Naam</th><th>Tier</th><th class="num hide-sm">Omzet thema</th><th class="num hide-sm">σ</th><th class="num">In mandje</th><th class="hide-sm">Waarom</th></tr></thead><tbody>
+    ${b.members.map((m) => `<tr><td><b>${esc(m.symbol)}</b></td><td>${esc(m.name)}</td><td>${esc(TIER[m.tier] || m.tier)}${m.pre_revenue ? '<span class="tag">pre-revenue</span>' : ""}</td>
+      <td class="num hide-sm">${m.exposure_pct == null ? "–" : nf0.format(m.exposure_pct) + "%"}</td><td class="num hide-sm">${pct(m.sigma)}</td>
+      <td class="num">${pct(m.weight, nf1)}</td><td class="hide-sm small">${esc(m.rationale)}${safeUrl(m.source_url) ? ` <a href="${esc(safeUrl(m.source_url))}" target="_blank" rel="noopener noreferrer">bron</a>` : ""}</td></tr>`).join("")}
+    </tbody></table></div>${b.cash_share > 0.001 ? `<p class="small muted" style="margin-top:6px">${pct(b.cash_share, nf1)} van het mandje blijft cash door de caps.</p>` : ""}</div>`
+    : `<p class="small muted" style="margin-top:12px">Nog geen mandje.</p>`;
+  return `<dl class="detail-grid">
+      <div><dt>These (versie ${esc(t.version)})</dt><dd>${esc(t.main_macro_driver)}</dd></div>
+      <div><dt>Horizon</dt><dd>${esc(HORIZON[t.horizon_class] || "onbekend")}${meta.horizon_reason ? `<br><span class="small muted">${esc(meta.horizon_reason)}</span>` : ""}</dd></div>
+      <div><dt>Benchmarks (vast per versie)</dt><dd>${bms}</dd></div>
+      <div><dt>Gisteren</dt><dd>${num(r.articles, nf0)} artikelen, alignment ${num(r.alignment)}${r.volume_z != null ? `, volume z ${nf1.format(r.volume_z)}` : ""}</dd></div>
+      ${pm ? `<div><dt>Polymarket</dt><dd>${pm}</dd></div>` : ""}
+      ${meta.emerging_tags?.length ? `<div><dt>Opkomende deelthema's</dt><dd>${meta.emerging_tags.map(esc).join(", ")}</dd></div>` : ""}
+      <div><dt>Zoekwoorden</dt><dd class="small">${(t.keywords || []).map(esc).join(", ")}</dd></div>
+    </dl>${basket}`;
+}
+
+function historySection() {
+  const snaps = state.snaps.filter((s) => s.topic_weights.length || s.cash < 1);
+  if (state.snaps.length < 2) return "";
+  const W = window.innerWidth < 720 ? 420 : 720, H = window.innerWidth < 720 ? 240 : 220, L = 42, R = 8, T = 8, B = 24;
+  const xs = (i) => L + (i * (W - L - R)) / Math.max(1, state.snaps.length - 1);
+  const ys = (v) => T + (1 - v) * (H - T - B);
+  const ids = [];
+  for (const s of state.snaps) for (const tw of s.topic_weights) if (!ids.includes(tw.topic_id)) ids.push(tw.topic_id);
+  const cum = state.snaps.map(() => 0);
+  const layers = ids.map((id) => {
+    const lower = [...cum];
+    state.snaps.forEach((s, i) => { cum[i] += s.topic_weights.find((t) => t.topic_id === id)?.weight || 0; });
+    const upper = [...cum];
+    const top = upper.map((v, i) => `${xs(i)},${ys(v)}`).join(" L");
+    const bottom = lower.map((v, i) => `${xs(i)},${ys(v)}`).reverse().join(" L");
+    const title = state.byId[id]?.title || state.snaps.flatMap((s) => s.topic_weights).find((t) => t.topic_id === id)?.title || "";
+    return `<path d="M${top} L${bottom} Z" fill="${state.color(id)}"><title>${esc(title)}</title></path>`;
+  }).join("");
+  const cashTop = state.snaps.map((_, i) => `${xs(i)},${ys(1)}`).join(" L");
+  const cashBottom = cum.map((v, i) => `${xs(i)},${ys(v)}`).reverse().join(" L");
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((v) => `<line x1="${L}" x2="${W - R}" y1="${ys(v)}" y2="${ys(v)}"/><text x="${L - 6}" y="${ys(v) + 4}" text-anchor="end">${v * 100}%</text>`).join("");
+  const step = Math.max(1, Math.ceil(state.snaps.length / 6));
+  const xt = state.snaps.map((s, i) => (i % step === 0 || i === state.snaps.length - 1) ? `<text x="${xs(i)}" y="${H - 6}" text-anchor="${i === 0 ? "start" : i === state.snaps.length - 1 ? "end" : "middle"}">${short(s.day)}</text>` : "").join("");
+  return `<section aria-label="Verloop"><div class="section-head"><h2>Verloop</h2><span class="small muted">Gewicht per topic per dag; gearceerd is cash</span></div>
+    <div class="panel chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gewicht per topic over de tijd">${hatch()}
+      <g class="axis">${ticks}</g>${layers}<path d="M${cashTop} L${cashBottom} Z" fill="url(#hatch)" opacity=".9"><title>Cash</title></path><g class="axis">${xt}</g></svg></div></section>`;
+}
+
+function portfolioSection() {
+  const s = state.snap;
+  if (!s) return "";
+  const value = s.portfolio_value_eur || 0;
+  const exits = state.baskets.filter((b) => b.status === "exit" && state.byId[b.topic_id] && state.byId[b.topic_id].status !== "active")
+    .filter((b, i, arr) => arr.findIndex((x) => x.topic_id === b.topic_id) === i).slice(0, 5);
+  const exitHtml = exits.length ? `<div class="notice" style="margin-bottom:12px">Afbouwen: ${exits.map((b) => {
+    const t = state.byId[b.topic_id]; return `${esc(t.title)} is uit Active gegaan${t.demoted_at ? " op " + short(t.demoted_at) : ""}`; }).join("; ")}. Deze posities staan niet meer in de doelen.</div>` : "";
+  const titles = (ids) => (ids || []).map((id) => esc(state.byId[id]?.title || "")).join(", ");
+  const rows = s.targets.map((x) => `<tr><td><b>${esc(x.symbol)}</b></td><td>${esc(x.name)}</td><td class="hide-sm small">${titles(x.topic_ids)}</td>
+    <td class="hide-sm">${esc(TIER[x.tier] || "")}</td><td class="num">${pct(x.weight, nf1)}${x.capped ? '<span class="tag">cap</span>' : ""}</td>
+    <td class="num">${value ? eur.format(x.weight * value) : "–"}</td></tr>`).join("");
+  const ce = Object.entries(s.currency_exposure || {}).map(([k, v]) => `${esc(k)} ${pct(v)}`).join(", ");
+  return `<section aria-label="Doelportefeuille"><div class="section-head"><h2>Doelportefeuille</h2>
+    <span class="small muted">Advies; orders plaats je zelf</span></div>
+    ${exitHtml}
+    <div class="kv"><span>Laatste rebalance <b>${short(s.last_rebalance_day)}</b>${s.rebalance_reason && s.is_rebalance ? ` (${esc(s.rebalance_reason)})` : ""}</span>
+      <span>Drift nu <b>${nf1.format((s.drift_max || 0) * 100)} pp</b> (rebalance vanaf 5 pp of nieuwe maand)</span>
+      <span>Cash <b>${pct(s.target_cash, nf1)}</b></span><span>Valuta ${ce}</span>
+      ${value ? `<span>Op basis van <b>${eur.format(value)}</b></span>` : ""}</div>
+    ${s.targets.length ? `<div class="panel tablewrap"><table><thead><tr><th>Ticker</th><th>Naam</th><th class="hide-sm">Topic</th><th class="hide-sm">Tier</th><th class="num">Doel</th><th class="num">Bedrag</th></tr></thead><tbody>${rows}</tbody></table></div>`
+      : `<div class="panel empty">Nog geen doelen. Die verschijnen zodra een topic Active wordt.</div>`}</section>`;
+}
+
+function onDeckSection() {
+  const list = state.tracked.filter((t) => t.status !== "active")
+    .sort((a, b) => (state.lastDay[b.id]?.i_score || 0) - (state.lastDay[a.id]?.i_score || 0));
+  if (!list.length) return "";
+  const why = (t, r) => {
+    const g = r.gates || {};
+    if (t.status === "radar") return "Shock-radar: komt alleen binnen na goedkeuring";
+    if (g.horizon === false) return "Horizon korter dan 3 maanden";
+    if (g.thesis === false) return "These te zwak (alignment)";
+    if (g.investable === false) return "Mandje kwam niet aan 4 tickers";
+    if (g.unresolved === false) return "Thema lijkt opgelost";
+    if ((r.i_score || 0) >= 60) return `Bijna: ${t.streak_in} van ${ENTER_DAYS} dagen boven 60`;
+    return "I onder 60";
+  };
+  const rows = list.map((t) => { const r = state.lastDay[t.id] || {}; return `<tr>
+    <td><div class="tname"><span>${esc(t.title)}${t.status === "radar" ? '<span class="tag">radar</span>' : ""}</span></div></td>
+    <td class="num"><b>${num(r.i_score, nf0)}</b></td><td>${gatesHtml(r.gates)}</td><td class="small">${esc(why(t, r))}</td>
+    <td class="num hide-sm">${short(t.first_seen)}</td></tr>`; }).join("");
+  return `<section aria-label="On Deck"><div class="section-head"><h2>On Deck en radar</h2><span class="small muted">${list.length} gevolgd</span></div>
+    <div class="panel tablewrap"><table><thead><tr><th>Topic</th><th class="num">I</th><th>Gates</th><th>Status</th><th class="num hide-sm">Sinds</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+}
+
+function runsSection() {
+  const rs = state.runs.slice(0, 7);
+  if (!rs.length) return "";
+  const label = { ok: "geslaagd", partial: "waarschuwingen", failed: "mislukt", running: "bezig" };
+  const rows = rs.map((r) => `<tr><td>${short(r.run_day)}</td><td><span class="status ${esc(r.status)}">${esc(label[r.status] || r.status)}</span></td>
+    <td class="num">${num(r.newsapi_tokens, nf0)}</td><td class="num hide-sm">${num(r.web_searches, nf0)}</td>
+    <td class="small">${(r.errors || []).slice(0, 2).map((e) => esc(`${e.where}: ${e.error}`)).join("<br>")}</td></tr>`).join("");
+  return `<section aria-label="Runs"><div class="section-head"><h2>Runs en verbruik</h2>
+    <span class="small muted">newsAPI.ai deze maand: ${nf0.format(state.tokensMonth)} van ${nf0.format(MONTHLY_TOKEN_LIMIT)} tokens</span></div>
+    <div class="panel tablewrap"><table><thead><tr><th>Dag</th><th>Status</th><th class="num">Tokens</th><th class="num hide-sm">Zoekacties</th><th>Meldingen</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+}
+
+function bind() {
+  app.querySelectorAll("tr.row").forEach((tr) => {
+    const toggle = () => { openRow = openRow === tr.dataset.topic ? null : tr.dataset.topic; render();
+      document.querySelector(`tr.row[data-topic="${openRow || tr.dataset.topic}"]`)?.focus(); };
+    tr.addEventListener("click", toggle);
+    tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+  });
+  app.querySelectorAll("[data-decide]").forEach((b) => b.addEventListener("click", () => decide(b.dataset.id, b.dataset.decide)));
+}
+
+// ---------- acties -----------------------------------------------------------------
+async function decide(id, decision) {
+  const note = document.getElementById("note-" + id)?.value || null;
+  app.querySelectorAll(`[data-id="${id}"]`).forEach((b) => (b.disabled = true));
+  const { error } = await sb.rpc("decide_approval", { p_id: id, p_decision: decision, p_note: note });
+  if (error) { toast(error.message); app.querySelectorAll(`[data-id="${id}"]`).forEach((b) => (b.disabled = false)); return; }
+  toast(decision === "approved" ? "Goedgekeurd. Wordt verwerkt bij de volgende run." : "Afgewezen.");
+  await refresh();
+}
+
+async function changePassword() {
+  const pw = prompt("Nieuw wachtwoord (minstens 10 tekens)");
+  if (!pw) return;
+  if (pw.length < 10) { toast("Wachtwoord te kort: gebruik minstens 10 tekens."); return; }
+  const { error } = await sb.auth.updateUser({ password: pw });
+  toast(error ? error.message : "Wachtwoord gewijzigd.");
+}
+
+async function logout() { if (sb) await sb.auth.signOut(); state = null; showLogin(); }
+
+function showLogin(msg) {
+  app.innerHTML = `<form class="panel login" id="login">
+    <h1>Macro-narratieven</h1><p class="muted">Log in met het account dat je hebt gekregen.</p>
+    <label>E-mailadres<input type="email" id="email" autocomplete="username" required></label>
+    <label>Wachtwoord<input type="password" id="password" autocomplete="current-password" required></label>
+    <button class="btn" type="submit">Inloggen</button>
+    <p class="error" id="loginError">${esc(msg || "")}</p>
+    <p class="small muted" style="margin-top:12px">Wachtwoord kwijt? Vraag de beheerder om een nieuw tijdelijk wachtwoord.</p></form>`;
+  document.getElementById("login").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const { error } = await sb.auth.signInWithPassword({ email: document.getElementById("email").value.trim(),
+      password: document.getElementById("password").value });
+    if (error) { document.getElementById("loginError").textContent = error.message === "Invalid login credentials" ? "E-mailadres of wachtwoord klopt niet." : error.message; return; }
+    await refresh();
+  });
+}
+
+async function refresh() {
+  try {
+    if (DEMO) { state = prepare(await loadDemo()); }
+    else {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) return showLogin();
+      state = prepare(await loadLive(session.user.email));
+    }
+    render();
+  } catch (e) {
+    app.innerHTML = `<div class="panel empty">Gegevens laden lukte niet: ${esc(e.message || e)}. Ververs de pagina of log opnieuw in.</div>`;
+  }
+}
+
+if (!DEMO) {
+  if (!window.supabase) { app.innerHTML = `<div class="panel empty">De Supabase-bibliotheek kon niet laden. Controleer je internetverbinding.</div>`; }
+  else { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true } }); refresh(); }
+} else { refresh(); }
+</script>
+</body>
+</html>

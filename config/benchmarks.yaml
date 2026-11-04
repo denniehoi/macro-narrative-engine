@@ -1,0 +1,52 @@
+# Vaste lijst waaruit de Reasoning LLM per topic 1-3 benchmarks kiest (vast per topic-versie).
+# relative_to: aandelen-ETF's worden gemeten ten opzichte van de wereldindex (afwijkend rendement).
+# Grondstoffen, rente, valuta, volatiliteit en crypto absoluut.
+
+reference: ACWI
+
+instruments:
+  ACWI:     {name: "MSCI All Country World", kind: index}
+  SPY:      {name: "S&P 500", kind: index}
+  VGK:      {name: "Europa aandelen", kind: equity, relative_to: ACWI}
+  FXI:      {name: "China large caps", kind: equity, relative_to: ACWI}
+  EWT:      {name: "Taiwan", kind: equity, relative_to: ACWI}
+  EWJ:      {name: "Japan", kind: equity, relative_to: ACWI}
+  EWW:      {name: "Mexico", kind: equity, relative_to: ACWI}
+  INDA:     {name: "India", kind: equity, relative_to: ACWI}
+  XLE:      {name: "Energie", kind: equity, relative_to: ACWI}
+  XOP:      {name: "Olie & gas exploratie", kind: equity, relative_to: ACWI}
+  OIH:      {name: "Olie-dienstverleners", kind: equity, relative_to: ACWI}
+  XLK:      {name: "Technologie", kind: equity, relative_to: ACWI}
+  SMH:      {name: "Halfgeleiders", kind: equity, relative_to: ACWI}
+  CIBR:     {name: "Cybersecurity", kind: equity, relative_to: ACWI}
+  XLF:      {name: "Financials", kind: equity, relative_to: ACWI}
+  KRE:      {name: "Regionale banken VS", kind: equity, relative_to: ACWI}
+  XLI:      {name: "Industrie", kind: equity, relative_to: ACWI}
+  ITA:      {name: "Lucht- en ruimtevaart & defensie", kind: equity, relative_to: ACWI}
+  PAVE:     {name: "Infrastructuur VS", kind: equity, relative_to: ACWI}
+  XLU:      {name: "Nutsbedrijven", kind: equity, relative_to: ACWI}
+  URA:      {name: "Uranium & nucleair", kind: equity, relative_to: ACWI}
+  ICLN:     {name: "Schone energie", kind: equity, relative_to: ACWI}
+  LIT:      {name: "Lithium & batterijen", kind: equity, relative_to: ACWI}
+  XLB:      {name: "Materialen", kind: equity, relative_to: ACWI}
+  COPX:     {name: "Kopermijnen", kind: equity, relative_to: ACWI}
+  GDX:      {name: "Goudmijnen", kind: equity, relative_to: ACWI}
+  XLV:      {name: "Gezondheidszorg", kind: equity, relative_to: ACWI}
+  IBB:      {name: "Biotech", kind: equity, relative_to: ACWI}
+  XLP:      {name: "Basisconsumptie", kind: equity, relative_to: ACWI}
+  XLY:      {name: "Duurzame consumptie", kind: equity, relative_to: ACWI}
+  XLC:      {name: "Communicatie", kind: equity, relative_to: ACWI}
+  XLRE:     {name: "Vastgoed", kind: equity, relative_to: ACWI}
+  XHB:      {name: "Woningbouw", kind: equity, relative_to: ACWI}
+  JETS:     {name: "Luchtvaart", kind: equity, relative_to: ACWI}
+  BDRY:     {name: "Droge bulk vrachttarieven", kind: commodity}
+  "BZ=F":   {name: "Brent olie", kind: commodity}
+  "CL=F":   {name: "WTI olie", kind: commodity}
+  "NG=F":   {name: "Aardgas (Henry Hub)", kind: commodity}
+  "GC=F":   {name: "Goud", kind: commodity}
+  "HG=F":   {name: "Koper", kind: commodity}
+  "ZW=F":   {name: "Tarwe", kind: commodity}
+  TLT:      {name: "Amerikaanse staatsobligaties 20+ jaar", kind: rates}
+  "DX-Y.NYB": {name: "Dollar-index", kind: fx}
+  "^VIX":   {name: "Volatiliteit S&P 500", kind: vol}
+  BTC-USD:  {name: "Bitcoin", kind: crypto}

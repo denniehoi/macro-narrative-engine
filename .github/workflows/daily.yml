@@ -1,0 +1,35 @@
+name: Dagelijkse run
+
+on:
+  schedule:
+    - cron: "17 5 * * *"   # 06:17 in de winter, 07:17 in de zomer (GitHub rekent in UTC)
+  workflow_dispatch:
+    inputs:
+      day:
+        description: "Rundatum JJJJ-MM-DD (leeg = vandaag)"
+        required: false
+
+concurrency:
+  group: daily-run
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Pipeline
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DAY: ${{ inputs.day }}
+        run: |
+          if [ -n "$DAY" ]; then python -m engine run --day "$DAY"; else python -m engine run; fi

@@ -1,0 +1,101 @@
+# Alle vrije parameters op één plek. Startwaarden; ijken op data (zie README, "IJken").
+
+models:
+  lite: claude-haiku-5-5          # discovery + thesis-alignment
+  reasoning: claude-sonnet-5-5    # horizon, benchmark, resolutie, mutatie, overlap
+  stock_search: claude-sonnet-5-5 # aandelen zoeken (met web search)
+  max_tokens: 4000
+  web_search_tool: web_search_20250305
+  web_search_max_uses: 10
+
+newsapi:
+  base_url: https://eventregistry.org/api/v1
+  lang: eng
+  daily_token_limit: 60       # harde daglimiet, zodat een bug niet de maand opmaakt
+  monthly_token_limit: 4500   # 5K-plan, met marge
+  articles_per_topic: 30      # 1 token per topic per dag
+  backfill_days: 30           # eenmalig per nieuw topic (timeAggr, 5 tokens)
+  discovery:
+    events_count: 50          # 1 event-zoekactie = 5 tokens
+    min_articles_in_event: 40
+    category_uris: [news/Business, news/Politics, news/Technology, news/Science]
+
+polymarket:
+  base_url: https://gamma-api.polymarket.com
+  min_liquidity_usd: 10000    # anders bepaalt één walvis het signaal
+  max_markets_per_topic: 5
+
+discovery:
+  mmp_threshold: 70
+  max_new_topics_per_day: 3
+
+narrative:
+  half_life_days: 10          # genormaliseerde EMA; evenwicht = input, dus geen bias door de decay-keuze
+  shock_half_life_days: 3     # shocks reageren sneller, maar op dezelfde schaal
+  baseline_days: 28
+  min_baseline_days: 7
+  volume_z_std_floor: 0.25
+  percentile_window_days: 90
+
+shock_radar:
+  volume_z_threshold: 3.0
+  min_alignment: 0.6
+  approval_hours: 48          # goedkeuring vervalt na 48 uur
+  protection_days: 7          # goedgekeurde shock: geen I-exit in deze periode
+  mutation_check_after_days: 5
+  radar_max_days: 7
+
+gates:
+  min_alignment_7d: 0.6
+  alignment_window_days: 7
+  min_tickers: 4
+  fail_days_to_exit: 3
+
+score:
+  component_floor: 0.05       # geen exacte nullen in het meetkundig gemiddelde
+  m_divisor: 2.0              # M = z20 / 2
+  m_window: 20
+  p_window: 120               # ingeprijsd-meter: beweging over ~6 maanden
+  p_z_low: 1.0                # onder 1σ: niets ingeprijsd
+  p_z_high: 4.0               # vanaf 4σ: volledig ingeprijsd
+  vol_window: 60
+  horizon_values: {lt_3m: 0.0, 3_6m: 0.6, 6_12m: 0.8, gt_12m: 1.0}
+
+active:
+  max_topics: 6
+  enter_threshold: 60
+  enter_days: 3
+  exit_threshold: 45
+  displacement_margin: 0.10   # uitdager moet laagste Active met 10% verslaan
+  topic_cap: 0.25             # max 25% per topic; rest cash
+
+on_deck:
+  max_topics: 15
+  purge_below_i: 30
+  purge_after_days: 14
+  reasoning_min_i: 50         # Reasoning-call alleen voor kandidaten in de buurt van de drempel
+  driver_rewrite_min_days: 30
+
+stock_search:
+  candidates_per_role: 12
+  min_history_days: 60
+  min_addv_usd: 5000000
+  min_tickers: 4
+  max_tickers: 8
+  max_per_run: 3              # kostenrem: maximaal 3 zoekrondes per dag
+
+weighting:
+  tier_budgets: {pure_play: 0.40, pick_and_shovel: 0.40, second_order: 0.20}
+  tier_exposure_pct: {pure_play: 50, pick_and_shovel: 20}  # >=50% pure play, 20-50% pick&shovel, <20% second order
+  sigma_floor: 0.20
+  corr_threshold: 0.85
+  max_weight_in_basket: 0.30
+  pre_revenue_max_weight: 0.10
+  max_weight_portfolio: 0.10
+  liquidity_max_share_of_addv: 0.01
+  portfolio_value_eur: 100000
+  base_currency: EUR
+
+rebalance:
+  drift_threshold: 0.05
+  monthly: true
