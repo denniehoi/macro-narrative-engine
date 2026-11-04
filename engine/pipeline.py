@@ -326,7 +326,7 @@ class DailyRun:
         if t["status"] == "active" or t.get("_approved_shock") or t.get("_new"):
             return True
         if not t.get("benchmarks") or not t.get("horizon_class"):
-            return t["status"] == "on_deck"
+            return True  # eenmalig invullen, ook voor radar-topics (nodig voor de goedkeuringskaart en M/P)
         return (t.get("_i") or 0) >= self.cfg["on_deck"]["reasoning_min_i"]
 
     def mutation_check(self, t) -> bool:
