@@ -78,7 +78,7 @@ De Supabase-database is al aangemaakt (`macro-narrative`, Frankfurt) met tabelle
 5. **Dashboard.** GitHub Pages instellen (Settings → Pages → Source: GitHub Actions) publiceert `dashboard/` bij elke wijziging. Pages vanuit een privé-repo vraagt een betaald GitHub-abonnement. Alternatieven zijn `dashboard/index.html` direct openen in de browser, of de map uploaden naar Netlify of Cloudflare Pages. De pagina bevat alleen de publieke sleutel; de data is afgeschermd door login en row level security.
 6. **Toegang.** Gebruik `python -m engine add-user --email naam@domein.nl --name "Naam"`, met `--role viewer` voor alleen meekijken. Dit maakt een account met een tijdelijk wachtwoord dat de gebruiker in het dashboard kan wijzigen.
 
-Met `dashboard/index.html?demo` zie je het dashboard met gesimuleerde data.
+Het dashboard staat op **https://denniehoi.github.io/macro-dashboard/**, vanuit de publieke repository `denniehoi/macro-dashboard`. Die bevat alleen `index.html` en de demo-data. Wijzig je `dashboard/` hier, kopieer het dan ook daarheen. Met `?demo` achter de link zie je gesimuleerde data.
 
 ## Lokaal
 
