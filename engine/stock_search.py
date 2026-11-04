@@ -98,8 +98,9 @@ def build_members(chosen: list[dict], by_sym: dict, cfg: dict) -> list[dict]:
         c = by_sym[m["symbol"]]
         pre = bool(m.get("pre_revenue", c.get("pre_revenue")))
         exp = m.get("exposure_pct", c.get("exposure_pct"))
+        exp = None if exp is None else max(0.0, min(100.0, float(exp)))
         members.append({
-            "symbol": m["symbol"], "name": c.get("name"), "role": c.get("role"),
+            "symbol": m["symbol"], "name": c.get("name"), "role": str(c.get("role") or "").lower() or None,
             "tier": weighting.tier_from_exposure(exp, pre, cfg), "exposure_pct": exp, "pre_revenue": pre,
             "rationale": m.get("rationale"), "source_url": c.get("source_url"), "sigma": c.get("sigma"),
             "addv_usd": c.get("addv_usd"), "currency": c.get("currency"),

@@ -228,6 +228,9 @@ class DailyRun:
             return
         cfg = self.cfg["discovery"]
         slugs = self.repo.all_slugs()
+        for c in out.get("candidates", []):
+            c["regime"] = "shock" if str(c.get("regime", "")).lower() == "shock" else "structural"
+            c["mmp"] = max(0, min(100, int(c.get("mmp") or 0)))
         cands = [c for c in out.get("candidates", []) if not c.get("duplicate_of") and c["mmp"] >= cfg["mmp_threshold"]]
         cands.sort(key=lambda c: c["mmp"], reverse=True)
         for c in cands[: cfg["max_new_topics_per_day"]]:
@@ -301,7 +304,15 @@ class DailyRun:
                 x = 0.0
             else:
                 x = scoring.narrative_input(o.get("articles"), o.get("alignment"))
-            r, stale = scoring.update_r(t.get("r_score"), x, scoring.ema_lambda(hl))
+            # Basis is de laatste R van vóór vandaag, zodat een tweede run op dezelfde dag niet dubbel telt.
+            prev_rows = [h for h in self.hist.get(t["id"], []) if h.get("r_score") is not None]
+            if prev_rows:
+                base = prev_rows[-1]["r_score"]
+            elif _d(t.get("first_seen")) == self.day:
+                base = None
+            else:
+                base = t.get("r_score")
+            r, stale = scoring.update_r(base, x, scoring.ema_lambda(hl))
             t["r_score"], t["_stale"] = r, stale
             base_since = self.day - timedelta(days=n["baseline_days"])
             hist_counts = [h.get("articles") for h in self.hist.get(t["id"], []) if _d(h["day"]) >= base_since]
@@ -366,11 +377,14 @@ class DailyRun:
             "andere_topics": [x for x in others_all if x["slug"] != t["slug"]],
         }
         res = self.ctx.llm.structured("reasoning", prompts.REASONING_SYSTEM, payload, "submit_reasoning", schema)
-        t["horizon_class"] = res["horizon_class"]
+        hc = str(res.get("horizon_class", "")).lower()
+        t["horizon_class"] = hc if hc in prompts.HORIZONS else t.get("horizon_class")
         t["meta"]["horizon_reason"] = res.get("horizon_reason")
         if payload["needs_benchmarks"]:
-            bms = [{"symbol": b["symbol"], "direction": int(b["direction"]), "why": b.get("why")}
-                   for b in res.get("benchmarks", []) if b["symbol"] in bench_list][:3]
+            canon = {k.upper(): k for k in bench_list}
+            bms = [{"symbol": canon[str(b["symbol"]).upper()], "direction": 1 if int(b["direction"]) >= 0 else -1,
+                    "why": b.get("why")}
+                   for b in res.get("benchmarks", []) if str(b.get("symbol", "")).upper() in canon][:3]
             if bms:
                 t["benchmarks"] = bms
                 self.repo.add_version(t, None)
@@ -523,8 +537,15 @@ class DailyRun:
 
     # --- 8. levenscyclus -------------------------------------------------------------
     def lifecycle(self):
+        keys = ("streak_in", "gate_fail_streak", "low_i_streak")
         for t in self.topics:
             if t["status"] in ("radar", "on_deck", "active"):
+                # Idempotent per dag: bij een herhaalde run starten we vanaf de tellers van vóór vandaag.
+                if t["meta"].get("streak_day") == self.day.isoformat():
+                    t.update(t["meta"].get("streak_base", {}))
+                else:
+                    t["meta"]["streak_base"] = {k: t.get(k, 0) for k in keys}
+                    t["meta"]["streak_day"] = self.day.isoformat()
                 lifecycle.update_streaks(t, t.get("_i"), t["_gates"]["pass"], self.cfg)
 
         incumbents = []

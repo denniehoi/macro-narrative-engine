@@ -193,3 +193,21 @@ def test_market_parses_yfinance_multiindex(monkeypatch):
     assert m.last_price("XLU") == df["Close"]["XLU"].iloc[-1]
     assert m.close("BZ=F").index.tz is None and len(m.volume("XLU")) == 5
     assert m.close("ONBEKEND") is None
+
+
+def test_rerun_same_day_is_idempotent():
+    start = date(2026, 10, 1)
+    world, store = FakeWorld(start), MemoryStore()
+    repo, market, llm = Repo(store), FakeMarket(world), FakeLLM()
+
+    def run(day):
+        ctx = Context(cfg=CFG, bench=BENCH, repo=repo, news=FakeNews(world), poly=FakePoly(), market=market,
+                      llm=llm, dry_run=True)
+        return DailyRun(ctx, day).run()
+
+    for k in range(4):
+        run(start + timedelta(days=k))
+    before = {t["slug"]: (t["r_score"], t["streak_in"], t["status"]) for t in store.select("topics")}
+    run(start + timedelta(days=3))  # zelfde dag nog eens
+    after = {t["slug"]: (t["r_score"], t["streak_in"], t["status"]) for t in store.select("topics")}
+    assert before == after

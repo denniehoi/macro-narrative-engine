@@ -53,7 +53,8 @@ def build_live_context(cfg, bench, repo: Repo, day: date) -> Context:
 
     news = NewsApiClient(env("NEWSAPI_KEY"), cfg, lambda: counters["today"], lambda: counters["month"], record)
     return Context(cfg=cfg, bench=bench, repo=repo, news=news, poly=PolymarketClient(cfg),
-                   market=MarketData(repo), llm=LLM(env("ANTHROPIC_API_KEY"), cfg))
+                   market=MarketData(repo), llm=LLM(env("ANTHROPIC_API_KEY"), cfg),
+                   now=datetime.now(timezone.utc))
 
 
 def cmd_run(args, cfg, bench):
@@ -87,10 +88,11 @@ def cmd_check(args, cfg, bench):
         from .llm import LLM
 
         llm = LLM(env("ANTHROPIC_API_KEY"), cfg)
-        out = llm.structured("lite", "Antwoord via de tool.", "Zeg ok.", "ok",
-                             {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
-                             max_tokens=50)
-        print(f"Anthropic: ok ({cfg['models']['lite']}) -> {out}")
+        for key in ("lite", "reasoning"):
+            out = llm.structured(key, "Antwoord in het schema.", "Zeg ok.", "ok",
+                                 {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
+                                 max_tokens=50)
+            print(f"Anthropic: ok ({cfg['models'][key]}) -> {out}")
     except Exception as e:  # noqa: BLE001
         ok = False
         print(f"Anthropic: FOUT {e}")
