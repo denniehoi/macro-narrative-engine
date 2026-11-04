@@ -1,9 +1,8 @@
 name: Dashboard publiceren
 
+# Handmatig: GitHub Pages moet eerst aan staan (Settings -> Pages -> Source: GitHub Actions).
+# Bij een privé-repository kan dat alleen met een betaald GitHub-abonnement.
 on:
-  push:
-    branches: [main]
-    paths: ["dashboard/**"]
   workflow_dispatch:
 
 permissions:
