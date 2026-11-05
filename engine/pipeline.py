@@ -114,6 +114,7 @@ class DailyRun:
             self.merges()
             self.lifecycle()
             self.allocate()
+            self.paper_trading()
             self.persist()
             if self.errors:
                 status = "partial"
@@ -725,6 +726,73 @@ class DailyRun:
             "drift_max": round(drift, 6), "currency_exposure": {k: round(v, 6) for k, v in cur_exp.items()},
             "heat_index": _mean([t.get("_i") for t in active]) or 0.0,
             "portfolio_value_eur": self.cfg["weighting"]["portfolio_value_eur"],
+        }
+
+    # --- 9b. papieren handel ---------------------------------------------------------------
+    def paper_trading(self):
+        from . import paper
+
+        mk = self.ctx.market
+        start_value = float(self.cfg["weighting"]["portfolio_value_eur"])
+        last = self.repo.last_snapshot(self.day)
+        lp = (last or {}).get("paper") or {}
+        closing = self.repo.unclosed_trades()
+        currency = dict(lp.get("currency", {}))
+        for b in list(self.baskets.values()) + closing:
+            for m in b["members"]:
+                currency[m["symbol"]] = m.get("currency") or currency.get(m["symbol"]) or "USD"
+        for x in self.snapshot["targets"]:
+            currency[x["symbol"]] = x.get("currency") or currency.get(x["symbol"]) or "USD"
+        ref = self.ctx.bench["reference"]
+        mk.load(sorted(set(currency) | {ref}), self.day)
+        prices = {s: mk.last_price(s) for s in currency}
+        fxs = {s: mk.fx_to_eur(c) for s, c in currency.items()}
+        bp, bf = mk.last_price(ref), mk.fx_to_eur("USD")
+        bench_eur = bp * bf if bp and bf else None
+
+        # 1. Uitstap: mandjes die vandaag (of eerder) zijn beëindigd, krijgen hun uitstapkoers.
+        for b in closing:
+            for m in b["members"]:
+                self.repo.update_member(b["id"], m["symbol"], {"exit_price": prices.get(m["symbol"]),
+                                                               "exit_fx": fxs.get(m["symbol"])})
+            perf = paper.basket_perf(b["members"], prices, fxs, (b.get("perf") or {}).get("bench_entry_eur"),
+                                     bench_eur)
+            self.repo.update_basket(b["id"], {"exit_day": self.day,
+                                              "perf": {**perf, "as_of": self.day.isoformat(), "closed": True}})
+            self.event("mandje_gesloten", None, basket=b["id"], rendement=round(perf["return_eur"] * 100, 2))
+
+        # 2. Instap en dagelijkse stand van de actieve mandjes in de doelportefeuille.
+        in_targets = {bid for x in self.snapshot["targets"] for bid in x.get("basket_ids", [])}
+        for b in self.baskets.values():
+            if b["id"] not in in_targets:
+                continue
+            perf_old = b.get("perf") or {}
+            if not b.get("entry_day"):
+                for m in b["members"]:
+                    m["entry_price"], m["entry_fx"] = prices.get(m["symbol"]), fxs.get(m["symbol"])
+                    self.repo.update_member(b["id"], m["symbol"], {"entry_price": m["entry_price"],
+                                                                   "entry_fx": m["entry_fx"]})
+                b["entry_day"] = self.day
+                perf_old = {"bench_entry_eur": bench_eur}
+            perf = paper.basket_perf(b["members"], prices, fxs, perf_old.get("bench_entry_eur"), bench_eur)
+            b["perf"] = {**perf, "as_of": self.day.isoformat()}
+            self.repo.update_basket(b["id"], {"entry_day": b["entry_day"], "perf": b["perf"]})
+
+        # 3. Papieren portefeuille: dagelijks herwaarderen, bij een rebalance opnieuw verdelen.
+        holdings, cash = dict(lp.get("holdings", {})), float(lp.get("cash", start_value))
+        nav, values = paper.mark_to_market(holdings, cash, prices, fxs, lp.get("values", {}))
+        bench_units, start_day = lp.get("bench_units"), lp.get("start_day")
+        if self.snapshot["is_rebalance"] and self.snapshot["targets"]:
+            holdings, cash, values = paper.rebalance(nav, self.snapshot["targets"], prices, fxs)
+            if bench_units is None and bench_eur:
+                bench_units, start_day = nav / bench_eur, self.day.isoformat()
+        bench_nav = bench_units * bench_eur if bench_units and bench_eur else lp.get("bench_nav", start_value)
+        self.snapshot["paper"] = {
+            "nav": nav, "cash": cash, "holdings": holdings, "values": values,
+            "currency": {s: currency[s] for s in holdings if s in currency},
+            "start_value": start_value, "start_day": start_day, "return": nav / start_value - 1.0,
+            "bench_units": bench_units, "bench_nav": bench_nav,
+            "bench_return": (bench_nav / start_value - 1.0) if start_day else None,
         }
 
     # --- 10. opslaan ----------------------------------------------------------------------

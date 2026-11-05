@@ -129,6 +129,9 @@ tr.detail td { background: var(--paper); padding: 14px 16px 18px; }
 .notice { padding: 12px 14px; border-radius: 6px; background: color-mix(in srgb, var(--warn) 14%, var(--surface));
   border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--rule)); font-size: 14px; }
 .empty { padding: 18px; color: var(--muted); }
+.pos { color: var(--ok); } .neg { color: var(--danger); }
+.paperline { margin-top: 10px; display: flex; gap: 6px 18px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
+.paperline strong { color: var(--ink); font-family: var(--display); font-size: 18px; }
 
 /* Login */
 .login { max-width: 380px; margin: 12vh auto 0; padding: 28px; }
@@ -183,6 +186,14 @@ let sb = null, state = null, openRow = null;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const safeUrl = (u) => (/^https?:\/\//i.test(u || "") ? u : null);
 const pct = (x, f = nf0) => (x == null ? "–" : f.format(x * 100) + "%");
+// Kleur en teken pas vanaf 0,05 procent(punt); daaronder neutraal "0,0".
+const signed = (x, unit) => {
+  if (x == null) return "–";
+  const v = Math.abs(x) < 0.0005 ? 0 : x;
+  return `<span class="${v > 0 ? "pos" : v < 0 ? "neg" : ""}">${v > 0 ? "+" : ""}${nf1.format(v * 100)}${unit}</span>`;
+};
+const ret = (x) => signed(x, "%");
+const pp = (x) => signed(x, " pp");
 const num = (x, f = nf2) => (x == null ? "–" : f.format(x));
 const day = (s) => (s ? new Date(String(s).slice(0, 10) + "T12:00:00") : null);
 const short = (s) => (s ? dfShort.format(day(s)) : "–");
@@ -210,12 +221,12 @@ async function loadLive(email) {
     q(sb.from("topics").select("*").in("status", ["active", "on_deck", "radar"])),
     q(sb.from("topic_daily").select("topic_id,day,status,articles,alignment,volume_z,r_score,n,m,d,p,i_score,gates,gates_pass,stale").gte("day", recent).order("day", { ascending: false }).limit(1000)),
     q(sb.from("approvals").select("*").order("created_at", { ascending: false }).limit(30)),
-    q(sb.from("baskets").select("*").in("status", ["active", "exit"]).order("created_at", { ascending: false }).limit(60)),
+    q(sb.from("baskets").select("*").order("created_at", { ascending: false }).limit(200)),
     q(sb.from("portfolio_snapshots").select("*").gte("day", since).order("day")),
     q(sb.from("runs").select("id,run_day,started_at,finished_at,status,errors,newsapi_tokens,llm_input_tokens,llm_output_tokens,web_searches,summary").order("started_at", { ascending: false }).limit(10)),
     q(sb.from("api_usage").select("*").gte("day", monthStart)),
   ]);
-  const ids = baskets.map((b) => b.id);
+  const ids = baskets.filter((b) => b.status === "active").map((b) => b.id);
   const members = ids.length ? await q(sb.from("basket_members").select("*").in("basket_id", ids)) : [];
   const me = users.find((u) => u.email === email.toLowerCase());
   return { me, app_users: users, topics, topic_daily: daily, approvals, baskets, basket_members: members,
@@ -238,10 +249,20 @@ function prepare(d) {
   for (const m of d.basket_members) (membersBy[m.basket_id] ||= []).push(m);
   const basketOf = {};
   for (const b of d.baskets) if (b.status === "active") basketOf[b.topic_id] = { ...b, members: (membersBy[b.id] || []).sort((x, y) => y.weight - x.weight) };
+  const topicReturn = (t) => {
+    const legs = d.baskets.filter((b) => b.topic_id === t.id && b.entry_day && (!t.promoted_at || b.entry_day >= t.promoted_at) && b.perf && b.perf.return_eur != null)
+      .sort((a, b) => a.entry_day.localeCompare(b.entry_day));
+    if (!legs.length) return null;
+    const r = legs.reduce((acc, b) => acc * (1 + b.perf.return_eur), 1) - 1;
+    const bench = legs.every((b) => b.perf.bench_eur != null) ? legs.reduce((acc, b) => acc * (1 + b.perf.bench_eur), 1) - 1 : null;
+    return { r, bench, since: legs[0].entry_day };
+  };
+  const closed = d.baskets.filter((b) => b.exit_day && b.perf && b.perf.return_eur != null)
+    .sort((a, b) => b.exit_day.localeCompare(a.exit_day));
   const runs = [...d.runs].sort((a, b) => String(b.run_day).localeCompare(String(a.run_day))
     || String(b.started_at).localeCompare(String(a.started_at)));
   const tokensMonth = d.api_usage.filter((u) => u.service === "newsapi").reduce((s, u) => s + u.units, 0);
-  return { ...d, snaps, snap, tracked, byId, lastDay, color, basketOf, runs, tokensMonth };
+  return { ...d, snaps, snap, tracked, byId, lastDay, color, basketOf, runs, tokensMonth, topicReturn, closed };
 }
 
 // ---------- weergave ---------------------------------------------------------------
@@ -254,7 +275,7 @@ function render() {
     return;
   }
   app.innerHTML = [header(), s.demo ? `<p class="notice" style="margin-top:16px">Voorbeelddata uit een gesimuleerde maand. Geen echte posities.</p>` : "",
-    approvalsSection(), hero(), activeSection(), historySection(), portfolioSection(), onDeckSection(), runsSection()].join("");
+    approvalsSection(), hero(), activeSection(), historySection(), portfolioSection(), closedSection(), onDeckSection(), runsSection()].join("");
   bind();
 }
 
@@ -314,7 +335,18 @@ function hero() {
       <h2>Verdeling ${esc(dfLong.format(day(snap.day)))}</h2>
       <ul class="legend">${legend}</ul>
       <div class="heat"><span>Hitte-index <strong>${num(snap.heat_index, nf0)}</strong> van 100 (gemiddelde I-score van Active)</span></div>
+      ${paperLine(snap)}
     </div></section>`;
+}
+
+function paperLine(snap) {
+  const p = snap.paper || {};
+  if (p.nav == null) return "";
+  if (!p.start_day) return `<div class="paperline"><span>Papieren portefeuille <strong>${eur.format(p.nav)}</strong></span><span>Start bij de eerste belegging</span></div>`;
+  return `<div class="paperline"><span>Papieren portefeuille <strong>${eur.format(p.nav)}</strong></span>
+    <span>${ret(p.return)} sinds ${short(p.start_day)}</span>
+    <span>Wereldindex (ACWI) ${ret(p.bench_return)}</span>
+    <span>Verschil ${pp(p.bench_return == null ? null : p.return - p.bench_return)}</span></div>`;
 }
 
 function approvalsSection() {
@@ -379,15 +411,16 @@ function activeSection() {
       <td class="num hide-sm">${num(r.n)}</td><td class="num hide-sm">${num(r.m)}</td><td class="num hide-sm">${num(r.d)}</td><td class="num hide-sm">${num(r.p)}</td>
       <td>${gatesHtml(r.gates)}</td>
       <td class="num hide-sm">${short(t.promoted_at)}</td>
+      <td class="num">${ret(state.topicReturn(t)?.r)}</td>
       <td class="num">${pct(weights[t.id])}</td></tr>
-      ${openRow === t.id ? `<tr class="detail"><td colspan="9">${topicDetail(t, r)}</td></tr>` : ""}`;
+      ${openRow === t.id ? `<tr class="detail"><td colspan="10">${topicDetail(t, r)}</td></tr>` : ""}`;
   }).join("");
   return `<section aria-label="Active topics"><div class="section-head"><h2>Active topics</h2>
     <span class="small muted">Instap: I ≥ 60 drie dagen op rij. Uitstap: I &lt; 45 of een gate die 3 dagen faalt. Klik een rij voor mandje en onderbouwing.</span></div>
     <div class="panel tablewrap"><table><thead><tr><th>Topic</th><th class="num">I</th>
       <th class="num hide-sm" title="Narratief: percentiel van de aandacht">N</th><th class="num hide-sm" title="Marktbevestiging: 20-daagse beweging in σ">M</th>
       <th class="num hide-sm" title="Houdbaarheid">D</th><th class="num hide-sm" title="Ingeprijsd">P</th>
-      <th>Gates</th><th class="num hide-sm">Active sinds</th><th class="num">Gewicht</th></tr></thead>
+      <th>Gates</th><th class="num hide-sm">Active sinds</th><th class="num" title="Rendement in euro's sinds instap">Rendement</th><th class="num">Gewicht</th></tr></thead>
       <tbody>${rows}</tbody></table></div></section>`;
 }
 
@@ -398,11 +431,18 @@ function topicDetail(t, r) {
   const bms = (t.benchmarks || []).map((b) => `${esc(b.symbol)} ${b.direction > 0 ? "omhoog" : "omlaag"}`).join(", ") || "nog niet gekozen";
   const pm = (meta.polymarket || []).map((m) => `${esc(m.question)} (${pct(m.prob_yes)})`).join("; ");
   const b = state.basketOf[t.id];
+  const perf = b?.perf || {};
+  const per = perf.per_symbol || {};
+  const perfLine = b?.entry_day ? `<p class="small" style="margin:4px 0 8px">Mandje sinds instap ${short(b.entry_day)}: <b>${ret(perf.return_eur)}</b> in euro's
+      (${ret(perf.return_local)} zonder valuta-effect), wereldindex ${ret(perf.bench_eur)}, verschil ${pp(perf.excess_eur)}.</p>` : "";
   const basket = b ? `<div class="basket"><h3>Mandje <span class="small muted">versie ${esc(b.topic_version)}, samengesteld ${short(b.notes?.day || b.created_at)} (${esc(b.reason)})</span></h3>
-    <div class="tablewrap"><table><thead><tr><th>Ticker</th><th>Naam</th><th>Tier</th><th class="num hide-sm">Omzet thema</th><th class="num hide-sm">σ</th><th class="num">In mandje</th><th class="hide-sm">Waarom</th></tr></thead><tbody>
+    ${perfLine}
+    <div class="tablewrap"><table><thead><tr><th>Ticker</th><th>Naam</th><th>Tier</th><th class="num hide-sm">Omzet thema</th><th class="num hide-sm">σ</th><th class="num">In mandje</th><th class="num hide-sm">Instap</th><th class="num">Rendement</th><th class="hide-sm">Waarom</th></tr></thead><tbody>
     ${b.members.map((m) => `<tr><td><b>${esc(m.symbol)}</b></td><td>${esc(m.name)}</td><td>${esc(TIER[m.tier] || m.tier)}${m.pre_revenue ? '<span class="tag">pre-revenue</span>' : ""}</td>
       <td class="num hide-sm">${m.exposure_pct == null ? "–" : nf0.format(m.exposure_pct) + "%"}</td><td class="num hide-sm">${pct(m.sigma)}</td>
-      <td class="num">${pct(m.weight, nf1)}</td><td class="hide-sm small">${esc(m.rationale)}${safeUrl(m.source_url) ? ` <a href="${esc(safeUrl(m.source_url))}" target="_blank" rel="noopener noreferrer">bron</a>` : ""}</td></tr>`).join("")}
+      <td class="num">${pct(m.weight, nf1)}</td>
+      <td class="num hide-sm">${m.entry_price ? `${nf2.format(m.entry_price)} ${esc(m.currency || "")}` : "–"}</td>
+      <td class="num">${ret(per[m.symbol]?.eur)}</td><td class="hide-sm small">${esc(m.rationale)}${safeUrl(m.source_url) ? ` <a href="${esc(safeUrl(m.source_url))}" target="_blank" rel="noopener noreferrer">bron</a>` : ""}</td></tr>`).join("")}
     </tbody></table></div>${b.cash_share > 0.001 ? `<p class="small muted" style="margin-top:6px">${pct(b.cash_share, nf1)} van het mandje blijft cash door de caps.</p>` : ""}</div>`
     : `<p class="small muted" style="margin-top:12px">Nog geen mandje.</p>`;
   return `<dl class="detail-grid">
@@ -447,7 +487,7 @@ function historySection() {
 function portfolioSection() {
   const s = state.snap;
   if (!s) return "";
-  const value = s.portfolio_value_eur || 0;
+  const value = s.paper?.nav || s.portfolio_value_eur || 0;
   const exits = state.baskets.filter((b) => b.status === "exit" && state.byId[b.topic_id] && state.byId[b.topic_id].status !== "active")
     .filter((b, i, arr) => arr.findIndex((x) => x.topic_id === b.topic_id) === i).slice(0, 5);
   const exitHtml = exits.length ? `<div class="notice" style="margin-bottom:12px">Afbouwen: ${exits.map((b) => {
@@ -463,9 +503,24 @@ function portfolioSection() {
     <div class="kv"><span>Laatste rebalance <b>${short(s.last_rebalance_day)}</b>${s.rebalance_reason && s.is_rebalance ? ` (${esc(s.rebalance_reason)})` : ""}</span>
       <span>Drift nu <b>${nf1.format((s.drift_max || 0) * 100)} pp</b> (rebalance vanaf 5 pp of nieuwe maand)</span>
       <span>Cash <b>${pct(s.target_cash, nf1)}</b></span><span>Valuta ${ce}</span>
-      ${value ? `<span>Op basis van <b>${eur.format(value)}</b></span>` : ""}</div>
+      ${value ? `<span>Bedragen op basis van <b>${eur.format(value)}</b> (papieren waarde)</span>` : ""}</div>
     ${s.targets.length ? `<div class="panel tablewrap"><table><thead><tr><th>Ticker</th><th>Naam</th><th class="hide-sm">Topic</th><th class="hide-sm">Tier</th><th class="num">Doel</th><th class="num">Bedrag</th></tr></thead><tbody>${rows}</tbody></table></div>`
       : `<div class="panel empty">Nog geen doelen. Die verschijnen zodra een topic Active wordt.</div>`}</section>`;
+}
+
+function closedSection() {
+  if (!state.closed.length) return "";
+  const why = (b) => (b.status === "exit" ? "topic uit Active" : "vervangen door nieuw mandje");
+  const rows = state.closed.slice(0, 20).map((b) => {
+    const t = state.byId[b.topic_id];
+    return `<tr><td>${esc(t?.title || "topic")}</td><td class="small">${why(b)}</td>
+      <td class="num hide-sm">${short(b.entry_day)}</td><td class="num hide-sm">${short(b.exit_day)}</td>
+      <td class="num"><b>${ret(b.perf.return_eur)}</b></td><td class="num hide-sm">${ret(b.perf.bench_eur)}</td><td class="num">${pp(b.perf.excess_eur)}</td></tr>`;
+  }).join("");
+  return `<section aria-label="Afgesloten mandjes"><div class="section-head"><h2>Afgesloten mandjes</h2>
+    <span class="small muted">Rendement in euro's van instap tot uitstap, tegen de wereldindex over dezelfde periode</span></div>
+    <div class="panel tablewrap"><table><thead><tr><th>Topic</th><th>Waarom</th><th class="num hide-sm">In</th><th class="num hide-sm">Uit</th>
+    <th class="num">Rendement</th><th class="num hide-sm">ACWI</th><th class="num">Verschil</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
 }
 
 function onDeckSection() {

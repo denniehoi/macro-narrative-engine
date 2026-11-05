@@ -57,6 +57,14 @@ De tier volgt hard uit het omzetaandeel: ≥ 50% is pure play, 20–50% is pick-
 
 Alle getallen staan in `config/settings.yaml`. Het zijn startwaarden.
 
+## Papieren handel
+
+Het systeem houdt bij wat de adviezen zouden hebben opgeleverd met een papieren portefeuille van €100.000 (`portfolio_value_eur`).
+- **Instap:** zodra een mandje in de doelportefeuille komt, legt het systeem per ticker de slotkoers en de wisselkoers vast.
+- **Uitstap:** als een topic uit Active gaat of een mandje wordt vervangen, legt het de uitstapkoersen vast en het eindrendement.
+- **Rendement:** in euro's (koers × wisselkoers), met het lokale rendement zonder valuta-effect ernaast, en altijd tegen de wereldindex (ACWI) over dezelfde periode.
+- **Portefeuille:** wordt elke dag opnieuw gewaardeerd en bij een rebalance opnieuw verdeeld. Er worden geen transactiekosten of belasting meegerekend.
+
 ## Afwijkingen van het ontwerp
 
 - **Temperature.** De huidige Anthropic-SDK en -modellen hebben geen temperature-parameter meer. Consistentie komt van geforceerde, schema-gebonden uitvoer en discrete klassen in plaats van vrije getallen.

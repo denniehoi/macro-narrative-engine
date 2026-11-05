@@ -218,3 +218,32 @@ def test_unknown_exposure_falls_back_to_role():
     assert weighting.tier_from_exposure(None, False, CFG, "pure_play") == "pure_play"
     assert weighting.tier_from_exposure(None, False, CFG, None) == "second_order"
     assert weighting.tier_from_exposure(30, False, CFG, "pure_play") == "pick_and_shovel"  # getal wint van rol
+
+
+# --- papieren handel ------------------------------------------------------------------
+
+def test_basket_perf_in_eur_with_fx_and_benchmark():
+    from engine import paper
+
+    members = [{"symbol": "A", "weight": 0.6, "entry_price": 100, "entry_fx": 0.90},
+               {"symbol": "B", "weight": 0.3, "entry_price": 50, "entry_fx": 1.0},
+               {"symbol": "C", "weight": 0.1, "entry_price": 10, "entry_fx": 0.90}]  # C heeft geen koers
+    perf = paper.basket_perf(members, {"A": 110, "B": 45}, {"A": 0.95, "B": 1.0}, 200.0, 210.0)
+    a_eur = (110 * 0.95) / (100 * 0.90) - 1
+    assert perf["per_symbol"]["A"]["local"] == pytest.approx(0.10)
+    assert perf["per_symbol"]["A"]["eur"] == pytest.approx(a_eur)
+    assert perf["return_eur"] == pytest.approx(0.6 * a_eur + 0.3 * -0.10)
+    assert perf["bench_eur"] == pytest.approx(0.05)
+    assert perf["missing"] == ["C"]
+
+
+def test_paper_portfolio_rebalance_and_mark():
+    from engine import paper
+
+    targets = [{"symbol": "A", "weight": 0.15}, {"symbol": "B", "weight": 0.10}]
+    holdings, cash, values = paper.rebalance(100_000, targets, {"A": 100, "B": 20}, {"A": 0.9, "B": 1.0})
+    assert values == {"A": 15_000, "B": 10_000} and cash == pytest.approx(75_000)
+    assert holdings["A"] == pytest.approx(15_000 / 90)
+    nav, vals = paper.mark_to_market(holdings, cash, {"A": 110, "B": None}, {"A": 0.9, "B": 1.0}, values)
+    assert vals["B"] == 10_000  # geen koers: laatste waarde
+    assert nav == pytest.approx(75_000 + 16_500 + 10_000)

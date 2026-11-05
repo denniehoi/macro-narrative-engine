@@ -238,3 +238,27 @@ def test_skip_if_done():
     rec = repo.start_run(day, False)
     repo.finish_run(rec["id"], {"status": "partial"})
     assert already_ran(repo, day)
+
+
+def test_paper_trading_entries_exits_and_nav(sim):
+    store, _ = sim
+    baskets = store.select("baskets")
+    opened = [b for b in baskets if b.get("entry_day")]
+    assert opened
+    for b in opened:
+        ms = store.select("basket_members", [("basket_id", "eq", b["id"])])
+        assert all(m.get("entry_price") and m.get("entry_fx") for m in ms)
+        assert "return_eur" in b["perf"] and b["perf"]["bench_eur"] is not None
+    closed = [b for b in baskets if b.get("exit_day")]
+    assert closed, "in de simulatie wordt minstens één mandje vervangen of verlaten"
+    for b in closed:
+        assert b["status"] in ("exit", "archived") and b["perf"].get("closed")
+        assert b["exit_day"] >= b["entry_day"]
+        ms = store.select("basket_members", [("basket_id", "eq", b["id"])])
+        assert all(m.get("exit_price") for m in ms)
+    snaps = sorted(store.select("portfolio_snapshots"), key=lambda s: s["day"])
+    assert snaps[0]["paper"]["nav"] == pytest.approx(CFG["weighting"]["portfolio_value_eur"])
+    last = snaps[-1]["paper"]
+    assert last["start_day"] and last["nav"] != pytest.approx(CFG["weighting"]["portfolio_value_eur"])
+    assert last["nav"] == pytest.approx(last["cash"] + sum(last["values"].values()))
+    assert last["bench_return"] is not None

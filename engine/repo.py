@@ -106,6 +106,23 @@ class Repo:
     def set_basket_status(self, topic_id: str, status: str) -> None:
         self.s.update("baskets", [("topic_id", "eq", topic_id), ("status", "eq", "active")], {"status": status})
 
+    def unclosed_trades(self) -> list[dict]:
+        """Mandjes die beëindigd zijn (uitstap of vervangen) maar nog geen uitstapkoers hebben."""
+        rows = [b for b in self.s.select("baskets", [("status", "in", ["exit", "archived"])])
+                if b.get("entry_day") and not b.get("exit_day")]
+        if not rows:
+            return []
+        members = self.s.select("basket_members", [("basket_id", "in", [b["id"] for b in rows])])
+        for b in rows:
+            b["members"] = [m for m in members if m["basket_id"] == b["id"]]
+        return rows
+
+    def update_basket(self, basket_id: str, values: dict) -> None:
+        self.s.update("baskets", [("id", "eq", basket_id)], values)
+
+    def update_member(self, basket_id: str, symbol: str, values: dict) -> None:
+        self.s.update("basket_members", [("basket_id", "eq", basket_id), ("symbol", "eq", symbol)], values)
+
     # Momentopnames ----------------------------------------------------------------
     def last_snapshot(self, before: date) -> Optional[dict]:
         rows = self.s.select("portfolio_snapshots", [("day", "lt", before)], order="day.desc", limit=1)
