@@ -53,7 +53,8 @@ def build_live_context(cfg, bench, repo: Repo, day: date) -> Context:
 
     news = NewsApiClient(env("NEWSAPI_KEY"), cfg, lambda: counters["today"], lambda: counters["month"], record)
     return Context(cfg=cfg, bench=bench, repo=repo, news=news, poly=PolymarketClient(cfg),
-                   market=MarketData(repo), llm=LLM(env("ANTHROPIC_API_KEY"), cfg),
+                   market=MarketData(repo, live_prices=cfg.get("market", {}).get("live_prices", True)),
+                   llm=LLM(env("ANTHROPIC_API_KEY"), cfg),
                    now=datetime.now(timezone.utc))
 
 

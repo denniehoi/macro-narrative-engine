@@ -63,7 +63,8 @@ Het systeem houdt bij wat de adviezen zouden hebben opgeleverd met een papieren 
 - **Instap:** zodra een mandje in de doelportefeuille komt, legt het systeem per ticker de slotkoers en de wisselkoers vast.
 - **Uitstap:** als een topic uit Active gaat of een mandje wordt vervangen, legt het de uitstapkoersen vast en het eindrendement.
 - **Rendement:** in euro's (koers × wisselkoers), met het lokale rendement zonder valuta-effect ernaast, en altijd tegen de wereldindex (ACWI) over dezelfde periode.
-- **Portefeuille:** wordt elke dag opnieuw gewaardeerd en bij een rebalance opnieuw verdeeld. Er worden geen transactiekosten of belasting meegerekend.
+- **Portefeuille:** wordt bij elke run opnieuw gewaardeerd en bij een rebalance opnieuw verdeeld. Er worden geen transactiekosten of belasting meegerekend.
+- **Live koersen:** een run tijdens beurstijd, ook een handmatige, rekent met de koers van dat moment (`market.live_prices`). De instapkoers van een mandje is die van de eerste run waarin het instapt; latere runs herwaarderen alleen.
 
 ## Afwijkingen van het ontwerp
 

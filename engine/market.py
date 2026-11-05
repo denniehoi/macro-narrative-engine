@@ -23,8 +23,9 @@ def drop_incomplete_bar(df: pd.DataFrame, now: Optional[datetime] = None) -> pd.
 class MarketData:
     """Interface: closes(symbols) -> DataFrame, volumes(symbols) -> DataFrame, currency(symbol), fx_to_eur(cur)."""
 
-    def __init__(self, repo=None, lookback_days: int = 400):
+    def __init__(self, repo=None, lookback_days: int = 400, live_prices: bool = True):
         self.repo = repo
+        self.live_prices = live_prices
         self.lookback_days = lookback_days
         self._close = pd.DataFrame()
         self._volume = pd.DataFrame()
@@ -67,7 +68,8 @@ class MarketData:
         for frame in (close, volume):
             idx = pd.to_datetime(frame.index)
             frame.index = idx.tz_localize(None) if idx.tz is not None else idx
-        close, volume = drop_incomplete_bar(close), drop_incomplete_bar(volume)
+        if not self.live_prices:
+            close, volume = drop_incomplete_bar(close), drop_incomplete_bar(volume)
         return close.dropna(how="all"), volume
 
     def _from_cache(self, symbols, today):

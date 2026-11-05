@@ -294,3 +294,32 @@ def test_paper_nav_matches_basket_return_after_entry():
     nav, _ = paper.mark_to_market(holdings, cash, p1, fx1, {})
     perf = paper.basket_perf(members, p1, fx1, None, None)
     assert nav / 100_000 - 1 == pytest.approx(topic_w * perf["return_eur"], abs=1e-12)
+
+
+def test_rerun_with_live_prices_keeps_entry_and_paper_consistent():
+    start = date(2026, 10, 1)
+    world, store = FakeWorld(start), MemoryStore()
+    repo, market, llm = Repo(store), FakeMarket(world), FakeLLM()
+
+    def run(day):
+        ctx = Context(cfg=CFG, bench=BENCH, repo=repo, news=FakeNews(world), poly=FakePoly(), market=market,
+                      llm=llm, dry_run=True)
+        return DailyRun(ctx, day).run()
+
+    for k in range(3):                        # AI-topic stapt in op dag 2
+        run(start + timedelta(days=k))
+    entry_day = (start + timedelta(days=2)).isoformat()
+    basket = next(b for b in store.select("baskets") if b.get("entry_day") == entry_day)
+    before = {m["symbol"]: m["entry_price"] for m in store.select("basket_members", [("basket_id", "eq", basket["id"])])}
+
+    original = market.last_price
+    market.last_price = lambda s: (original(s) * 1.05 if s.startswith("PWR") else original(s))  # koers loopt live op
+    run(start + timedelta(days=2))                                                               # tweede run, zelfde dag
+
+    after = {m["symbol"]: m["entry_price"] for m in store.select("basket_members", [("basket_id", "eq", basket["id"])])}
+    assert after == before                    # instap blijft die van de eerste run
+    b = next(x for x in store.select("baskets") if x["id"] == basket["id"])
+    snap = store.select("portfolio_snapshots", [("day", "eq", entry_day)])[0]
+    tw = sum(x["weight"] for x in snap["topic_weights"] if x["topic_id"] == basket["topic_id"])
+    assert b["perf"]["return_eur"] == pytest.approx(0.05 * (1 - b["cash_share"]), abs=1e-5)  # gewichten afgerond
+    assert snap["paper"]["nav"] / 100_000 - 1 == pytest.approx(tw * b["perf"]["return_eur"], abs=1e-6)

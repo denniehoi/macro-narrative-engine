@@ -96,6 +96,9 @@ weighting:
   portfolio_value_eur: 100000
   base_currency: EUR
 
+market:
+  live_prices: true           # een run tijdens beurstijd rekent met de koers van dat moment
+
 rebalance:
   drift_threshold: 0.05
   monthly: true

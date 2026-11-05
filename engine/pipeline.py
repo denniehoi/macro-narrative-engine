@@ -771,9 +771,8 @@ class DailyRun:
             if b["id"] not in in_targets:
                 continue
             perf_old = b.get("perf") or {}
-            # Ook bij een herhaalde run op de instapdag opnieuw vastleggen: de papieren portefeuille wordt
-            # die dag met dezelfde koersen opnieuw verdeeld, zo blijven mandje en portefeuille gelijk.
-            if not b.get("entry_day") or str(b["entry_day"])[:10] == self.day.isoformat():
+            # De instapkoers is die van de eerste run waarin het mandje instapt; latere runs herwaarderen alleen.
+            if not b.get("entry_day"):
                 for m in b["members"]:
                     m["entry_price"], m["entry_fx"] = prices.get(m["symbol"]), fxs.get(m["symbol"])
                     self.repo.update_member(b["id"], m["symbol"], {"entry_price": m["entry_price"],
@@ -789,9 +788,21 @@ class DailyRun:
         nav, values = paper.mark_to_market(holdings, cash, prices, fxs, lp.get("values", {}))
         bench_units, start_day = lp.get("bench_units"), lp.get("start_day")
         if self.snapshot["is_rebalance"] and self.snapshot["targets"]:
-            holdings, cash, values = paper.rebalance(nav, self.snapshot["targets"], prices, fxs)
-            if bench_units is None and bench_eur:
-                bench_units, start_day = nav / bench_eur, self.day.isoformat()
+            # Posities van mandjes die vandaag instapten, kopen we tegen hun (eerste) instapkoers. Bij een
+            # herhaalde run op dezelfde dag blijven portefeuille en mandjesrendement zo met elkaar kloppen.
+            reb_p, reb_f = dict(prices), dict(fxs)
+            for b in self.baskets.values():
+                if str(b.get("entry_day") or "")[:10] == self.day.isoformat():
+                    for m in b["members"]:
+                        if m.get("entry_price") and m.get("entry_fx"):
+                            reb_p[m["symbol"]], reb_f[m["symbol"]] = m["entry_price"], m["entry_fx"]
+            holdings, cash, _ = paper.rebalance(nav, self.snapshot["targets"], reb_p, reb_f)
+            nav, values = paper.mark_to_market(holdings, cash, prices, fxs, {})
+            if bench_units is None:
+                bench_entry = next((((b.get("perf") or {}).get("bench_entry_eur")) for b in self.baskets.values()
+                                    if str(b.get("entry_day") or "")[:10] == self.day.isoformat()), None) or bench_eur
+                if bench_entry:
+                    bench_units, start_day = start_value / bench_entry, self.day.isoformat()
         bench_nav = bench_units * bench_eur if bench_units and bench_eur else lp.get("bench_nav", start_value)
         self.snapshot["paper"] = {
             "nav": nav, "cash": cash, "holdings": holdings, "values": values,
