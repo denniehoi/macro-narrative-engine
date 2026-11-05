@@ -276,3 +276,21 @@ def test_drop_incomplete_bar_during_us_market_hours():
     assert list(drop_incomplete_bar(df, during)["X"]) == [1.0, 2.0]
     assert len(drop_incomplete_bar(df, after)) == 3
     assert len(drop_incomplete_bar(df, morning)) == 3
+
+
+def test_paper_nav_matches_basket_return_after_entry():
+    """Instap en papieren portefeuille op dezelfde koersen: de winst van de portefeuille is
+    precies topicgewicht x rendement van het mandje (zonder caps)."""
+    from engine import paper
+
+    members = [{"symbol": "A", "weight": 0.6}, {"symbol": "B", "weight": 0.4}]
+    p0, p1 = {"A": 100.0, "B": 50.0}, {"A": 112.0, "B": 45.0}
+    fx0, fx1 = {"A": 0.90, "B": 0.90}, {"A": 0.92, "B": 0.92}
+    for m in members:
+        m["entry_price"], m["entry_fx"] = p0[m["symbol"]], fx0[m["symbol"]]
+    topic_w = 0.25
+    targets = [{"symbol": m["symbol"], "weight": topic_w * m["weight"]} for m in members]
+    holdings, cash, _ = paper.rebalance(100_000, targets, p0, fx0)
+    nav, _ = paper.mark_to_market(holdings, cash, p1, fx1, {})
+    perf = paper.basket_perf(members, p1, fx1, None, None)
+    assert nav / 100_000 - 1 == pytest.approx(topic_w * perf["return_eur"], abs=1e-12)

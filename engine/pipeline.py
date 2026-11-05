@@ -749,6 +749,9 @@ class DailyRun:
         fxs = {s: mk.fx_to_eur(c) for s, c in currency.items()}
         bp, bf = mk.last_price(ref), mk.fx_to_eur("USD")
         bench_eur = bp * bf if bp and bf else None
+        ref_close = mk.close(ref)
+        ref_close = ref_close.dropna() if ref_close is not None else None
+        price_day = ref_close.index[-1].date().isoformat() if ref_close is not None and len(ref_close) else None
 
         # 1. Uitstap: mandjes die vandaag (of eerder) zijn beëindigd, krijgen hun uitstapkoers.
         for b in closing:
@@ -758,7 +761,8 @@ class DailyRun:
             perf = paper.basket_perf(b["members"], prices, fxs, (b.get("perf") or {}).get("bench_entry_eur"),
                                      bench_eur)
             self.repo.update_basket(b["id"], {"exit_day": self.day,
-                                              "perf": {**perf, "as_of": self.day.isoformat(), "closed": True}})
+                                              "perf": {**perf, "as_of": self.day.isoformat(),
+                                                       "price_day": price_day, "closed": True}})
             self.event("mandje_gesloten", None, basket=b["id"], rendement=round(perf["return_eur"] * 100, 2))
 
         # 2. Instap en dagelijkse stand van de actieve mandjes in de doelportefeuille.
@@ -767,7 +771,9 @@ class DailyRun:
             if b["id"] not in in_targets:
                 continue
             perf_old = b.get("perf") or {}
-            if not b.get("entry_day"):
+            # Ook bij een herhaalde run op de instapdag opnieuw vastleggen: de papieren portefeuille wordt
+            # die dag met dezelfde koersen opnieuw verdeeld, zo blijven mandje en portefeuille gelijk.
+            if not b.get("entry_day") or str(b["entry_day"])[:10] == self.day.isoformat():
                 for m in b["members"]:
                     m["entry_price"], m["entry_fx"] = prices.get(m["symbol"]), fxs.get(m["symbol"])
                     self.repo.update_member(b["id"], m["symbol"], {"entry_price": m["entry_price"],
@@ -775,7 +781,7 @@ class DailyRun:
                 b["entry_day"] = self.day
                 perf_old = {"bench_entry_eur": bench_eur}
             perf = paper.basket_perf(b["members"], prices, fxs, perf_old.get("bench_entry_eur"), bench_eur)
-            b["perf"] = {**perf, "as_of": self.day.isoformat()}
+            b["perf"] = {**perf, "as_of": self.day.isoformat(), "price_day": price_day}
             self.repo.update_basket(b["id"], {"entry_day": b["entry_day"], "perf": b["perf"]})
 
         # 3. Papieren portefeuille: dagelijks herwaarderen, bij een rebalance opnieuw verdelen.
@@ -790,7 +796,8 @@ class DailyRun:
         self.snapshot["paper"] = {
             "nav": nav, "cash": cash, "holdings": holdings, "values": values,
             "currency": {s: currency[s] for s in holdings if s in currency},
-            "start_value": start_value, "start_day": start_day, "return": nav / start_value - 1.0,
+            "start_value": start_value, "start_day": start_day, "price_day": price_day,
+            "return": nav / start_value - 1.0,
             "bench_units": bench_units, "bench_nav": bench_nav,
             "bench_return": (bench_nav / start_value - 1.0) if start_day else None,
         }

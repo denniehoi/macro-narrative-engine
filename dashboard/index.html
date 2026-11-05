@@ -373,7 +373,7 @@ function paperLine(snap) {
   if (p.nav == null) return "";
   if (!p.start_day) return `<div class="paperline"><span>Papieren portefeuille <strong>${eur.format(p.nav)}</strong></span><span>Start bij de eerste belegging</span></div>`;
   return `<div class="paperline"><span>Papieren portefeuille <strong>${eur.format(p.nav)}</strong></span>
-    <span>${ret(p.return)} sinds ${short(p.start_day)}</span>
+    <span>${ret(p.return)} sinds ${short(p.start_day)}${p.price_day ? ` (slotkoersen ${short(p.price_day)})` : ""}</span>
     <span>Wereldindex (ACWI) ${ret(p.bench_return)}</span>
     <span>Verschil ${pp(p.bench_return == null ? null : p.return - p.bench_return)}</span>
     <a href="#rendement">Details</a></div>`;
@@ -551,7 +551,8 @@ function returnsSummary() {
   const stat = (label, value, sub = "") => `<div class="panel"><div class="label">${label}</div><div class="value">${value}</div>${sub ? `<div class="small muted">${sub}</div>` : ""}</div>`;
   return `<section aria-label="Papieren portefeuille" style="margin-top:20px">
     <h2>Papieren portefeuille</h2>
-    <p class="muted small">Gestart met ${eur.format(p.start_value || 0)}${p.start_day ? ` op ${esc(dfLong.format(day(p.start_day)))}` : ""}. In euro's, zonder transactiekosten en belasting.</p>
+    <p class="muted small">Gestart met ${eur.format(p.start_value || 0)}${p.start_day ? ` op ${esc(dfLong.format(day(p.start_day)))}` : ""}. In euro's, zonder transactiekosten en belasting.
+      ${p.price_day ? `Gewaardeerd op de slotkoersen van ${esc(dfLong.format(day(p.price_day)))}; de waarde verandert één keer per handelsdag, na het sluiten van de Amerikaanse beurs (22:00).` : ""}</p>
     <div class="bigstats">
       ${stat("Waarde nu", eur.format(p.nav), `${eur.format(invested)} belegd, ${eur.format(p.cash || 0)} cash`)}
       ${stat("Rendement", ret(p.start_day ? p.return : null), p.start_day ? `${eur.format(p.nav - (p.start_value || 0))} resultaat` : "nog niet belegd")}
