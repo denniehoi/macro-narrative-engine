@@ -262,3 +262,17 @@ def test_paper_trading_entries_exits_and_nav(sim):
     assert last["start_day"] and last["nav"] != pytest.approx(CFG["weighting"]["portfolio_value_eur"])
     assert last["nav"] == pytest.approx(last["cash"] + sum(last["values"].values()))
     assert last["bench_return"] is not None
+
+
+def test_drop_incomplete_bar_during_us_market_hours():
+    import pandas as pd
+
+    from engine.market import drop_incomplete_bar
+
+    df = pd.DataFrame({"X": [1.0, 2.0, 3.0]}, index=pd.to_datetime(["2026-11-03", "2026-11-04", "2026-11-05"]))
+    during = datetime(2026, 11, 5, 19, 30, tzinfo=timezone.utc)    # 14:30 in New York
+    after = datetime(2026, 11, 5, 22, 0, tzinfo=timezone.utc)      # 17:00 in New York
+    morning = datetime(2026, 11, 6, 5, 17, tzinfo=timezone.utc)    # vóór opening, gisteren is afgesloten
+    assert list(drop_incomplete_bar(df, during)["X"]) == [1.0, 2.0]
+    assert len(drop_incomplete_bar(df, after)) == 3
+    assert len(drop_incomplete_bar(df, morning)) == 3

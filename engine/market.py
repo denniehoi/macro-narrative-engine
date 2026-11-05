@@ -2,12 +2,22 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
 log = logging.getLogger(__name__)
+
+
+def drop_incomplete_bar(df: pd.DataFrame, now: Optional[datetime] = None) -> pd.DataFrame:
+    """Gebruik alleen afgesloten handelsdagen: een run tijdens Amerikaanse beursuren ziet anders een
+    halve dag als 'slotkoers' (vertekent instapkoersen, rendement en M/P)."""
+    now_ny = (now or datetime.now(ZoneInfo("UTC"))).astimezone(ZoneInfo("America/New_York"))
+    if df.empty or now_ny.time() >= time(16, 30):
+        return df
+    return df[df.index.normalize() < pd.Timestamp(now_ny.date())]
 
 
 class MarketData:
@@ -57,6 +67,7 @@ class MarketData:
         for frame in (close, volume):
             idx = pd.to_datetime(frame.index)
             frame.index = idx.tz_localize(None) if idx.tz is not None else idx
+        close, volume = drop_incomplete_bar(close), drop_incomplete_bar(volume)
         return close.dropna(how="all"), volume
 
     def _from_cache(self, symbols, today):
