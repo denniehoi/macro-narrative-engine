@@ -103,6 +103,8 @@ section { margin-top: 32px; }
   color: var(--accent-ink); font-weight: 600; cursor: pointer; }
 .btn.secondary { background: transparent; color: var(--ink); border-color: var(--rule); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.sm { padding: 4px 10px; font-size: 13px; }
+.runctl { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
 /* Tabellen */
 .tablewrap { overflow-x: auto; }
@@ -193,6 +195,7 @@ const dfShort = new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: "short
 const dfTime = new Intl.DateTimeFormat("nl-NL", { hour: "2-digit", minute: "2-digit" });
 
 let sb = null, state = null, openRow = null;
+let runUi = "idle", runSince = null, runPoll = null;
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const safeUrl = (u) => (/^https?:\/\//i.test(u || "") ? u : null);
@@ -303,10 +306,21 @@ function header() {
     <div class="runline small">
       <span class="status ${esc(r?.status)}">${esc(label)}</span>
       <span class="muted">${esc(when)}</span>
+      ${runControl(r)}
       <span class="muted">${esc(state.me.display_name || state.me.email)}</span>
       ${state.demo ? "" : `<button class="linkbtn" onclick="changePassword()">Wachtwoord wijzigen</button>
       <button class="linkbtn" onclick="logout()">Uitloggen</button>`}
     </div></header>`;
+}
+
+function runControl(r) {
+  if (state.demo || state.me.role !== "approver") return "";
+  const recentRunning = r?.status === "running" && Date.now() - new Date(r.started_at) < 30 * 60e3;
+  if (runUi === "confirm") return `<span class="runctl"><span>Nieuwe run starten? Dat kost 10 tot 25 nieuwstokens.</span>
+    <button class="btn sm" onclick="startRun()">Starten</button><button class="btn sm secondary" onclick="setRunUi('idle')">Annuleren</button></span>`;
+  if (runUi === "busy") return `<button class="btn sm" disabled>Bezig met starten…</button>`;
+  if (runUi === "waiting" || recentRunning) return `<button class="btn sm" disabled>Run loopt, duurt 2 tot 5 minuten</button>`;
+  return `<button class="btn sm secondary" onclick="setRunUi('confirm')">Run starten</button>`;
 }
 
 function hatch() {
@@ -633,7 +647,7 @@ function runsSection() {
   const rs = state.runs.slice(0, 7);
   if (!rs.length) return "";
   const label = { ok: "geslaagd", partial: "waarschuwingen", failed: "mislukt", running: "bezig" };
-  const rows = rs.map((r) => `<tr><td>${short(r.run_day)}</td><td><span class="status ${esc(r.status)}">${esc(label[r.status] || r.status)}</span></td>
+  const rows = rs.map((r) => `<tr><td>${short(r.run_day)} <span class="muted">${r.started_at ? dfTime.format(new Date(r.started_at)) : ""}</span></td><td><span class="status ${esc(r.status)}">${esc(label[r.status] || r.status)}</span></td>
     <td class="num">${num(r.newsapi_tokens, nf0)}</td><td class="num hide-sm">${num(r.web_searches, nf0)}</td>
     <td class="small">${(r.errors || []).slice(0, 2).map((e) => esc(`${e.where}: ${e.error}`)).join("<br>")}</td></tr>`).join("");
   return `<section aria-label="Runs"><div class="section-head"><h2>Runs en verbruik</h2>
@@ -663,6 +677,36 @@ async function decide(id, decision) {
   if (error) { toast(error.message); app.querySelectorAll(`[data-id="${id}"]`).forEach((b) => (b.disabled = false)); return; }
   toast(decision === "approved" ? "Goedgekeurd. Wordt verwerkt bij de volgende run." : "Afgewezen.");
   await refresh();
+}
+
+function setRunUi(v) { runUi = v; render(); }
+
+async function startRun() {
+  setRunUi("busy");
+  runSince = new Date();
+  const { data, error } = await sb.functions.invoke("trigger-run", { method: "POST", body: {} });
+  if (error) {
+    let msg = error.message;
+    try { msg = (await error.context.json()).error || msg; } catch (_) { /* geen JSON */ }
+    toast(msg);
+    setRunUi("idle");
+    return;
+  }
+  toast("Run gestart. Over 2 tot 5 minuten verschijnt de nieuwe stand vanzelf.");
+  setRunUi("waiting");
+  clearInterval(runPoll);
+  const deadline = Date.now() + 15 * 60e3;
+  runPoll = setInterval(async () => {
+    const { data: rows } = await sb.from("runs").select("status,started_at").gte("started_at", runSince.toISOString())
+      .order("started_at", { ascending: false }).limit(1);
+    const done = rows?.length && rows[0].status !== "running";
+    if (done || Date.now() > deadline) {
+      clearInterval(runPoll);
+      runUi = "idle";
+      await refresh();
+      toast(done ? "Run klaar: de gegevens zijn bijgewerkt." : "De run duurt langer dan verwacht. Ververs de pagina later.");
+    }
+  }, 20000);
 }
 
 async function changePassword() {

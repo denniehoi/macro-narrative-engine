@@ -88,6 +88,12 @@ De Supabase-database is al aangemaakt (`macro-narrative`, Frankfurt) met tabelle
 
 Het dashboard staat op **https://denniehoi.github.io/macro-dashboard/**, vanuit de publieke repository `denniehoi/macro-dashboard`. Die bevat alleen `index.html` en de demo-data. Wijzig je `dashboard/` hier, kopieer het dan ook daarheen. Met `?demo` achter de link zie je gesimuleerde data.
 
+## Handmatige run vanuit het dashboard
+
+Goedkeurders zien rechtsboven de knop **Run starten**. Die roept de Supabase-functie `trigger-run` aan (`supabase/functions/trigger-run`). Die functie controleert de login en de rol, en start daarna de workflow *Dagelijkse run* bij GitHub. De GitHub-sleutel staat alleen in Supabase, als secret `GH_DISPATCH_TOKEN`. Het is een fine-grained token met alleen *Actions: read and write* op deze repository.
+
+Er gelden twee beperkingen: maximaal één run per 15 minuten en maximaal vier per 24 uur. Wie wanneer een run startte, staat in de tabel `run_requests`.
+
 ## Lokaal
 
 ```bash
