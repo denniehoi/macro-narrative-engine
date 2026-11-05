@@ -97,11 +97,14 @@ def build_members(chosen: list[dict], by_sym: dict, cfg: dict) -> list[dict]:
     for m in chosen:
         c = by_sym[m["symbol"]]
         pre = bool(m.get("pre_revenue", c.get("pre_revenue")))
-        exp = m.get("exposure_pct", c.get("exposure_pct"))
+        exp = m.get("exposure_pct")
+        if exp is None:  # stap 3 gaf geen getal: gebruik het getal uit de zoekstap
+            exp = c.get("exposure_pct")
         exp = None if exp is None else max(0.0, min(100.0, float(exp)))
+        role = str(c.get("role") or "").lower() or None
         members.append({
-            "symbol": m["symbol"], "name": c.get("name"), "role": str(c.get("role") or "").lower() or None,
-            "tier": weighting.tier_from_exposure(exp, pre, cfg), "exposure_pct": exp, "pre_revenue": pre,
+            "symbol": m["symbol"], "name": c.get("name"), "role": role,
+            "tier": weighting.tier_from_exposure(exp, pre, cfg, role), "exposure_pct": exp, "pre_revenue": pre,
             "rationale": m.get("rationale"), "source_url": c.get("source_url"), "sigma": c.get("sigma"),
             "addv_usd": c.get("addv_usd"), "currency": c.get("currency"),
         })

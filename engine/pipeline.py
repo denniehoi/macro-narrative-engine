@@ -222,7 +222,7 @@ class DailyRun:
         try:
             out = self.ctx.llm.structured(
                 "lite", prompts.DISCOVERY_SYSTEM, {"events": events, "bestaande_topics": existing},
-                "submit_discovery", prompts.DISCOVERY_SCHEMA, max_tokens=3000)
+                "submit_discovery", prompts.DISCOVERY_SCHEMA, max_tokens=8000)
         except Exception as e:  # noqa: BLE001
             self.error("discovery-llm", e)
             return

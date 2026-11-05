@@ -2,7 +2,11 @@ name: Dagelijkse run
 
 on:
   schedule:
-    - cron: "17 5 * * *"   # 06:17 in de winter, 07:17 in de zomer (GitHub rekent in UTC)
+    # GitHub start geplande runs soms uren te laat. Daarom drie tijdstippen (UTC);
+    # de latere slaan over zodra de run van vandaag gelukt is (--skip-if-done).
+    - cron: "17 5 * * *"   # 06:17 winter / 07:17 zomer
+    - cron: "47 6 * * *"
+    - cron: "17 9 * * *"
   workflow_dispatch:
     inputs:
       day:
@@ -31,5 +35,8 @@ jobs:
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           DAY: ${{ inputs.day }}
+          EVENT: ${{ github.event_name }}
         run: |
-          if [ -n "$DAY" ]; then python -m engine run --day "$DAY"; else python -m engine run; fi
+          if [ -n "$DAY" ]; then python -m engine run --day "$DAY"
+          elif [ "$EVENT" = "schedule" ]; then python -m engine run --skip-if-done
+          else python -m engine run; fi

@@ -57,9 +57,18 @@ def build_live_context(cfg, bench, repo: Repo, day: date) -> Context:
                    now=datetime.now(timezone.utc))
 
 
+def already_ran(repo: Repo, day: date) -> bool:
+    rows = repo.s.select("runs", [("run_day", "eq", day), ("dry_run", "eq", False), ("status", "in", ["ok", "partial"])],
+                        limit=1)
+    return bool(rows)
+
+
 def cmd_run(args, cfg, bench):
     day = date.fromisoformat(args.day) if args.day else datetime.now(ZoneInfo("Europe/Amsterdam")).date()
     repo = supabase_repo()
+    if args.skip_if_done and already_ran(repo, day):
+        print(f"Run voor {day} is al gedaan; reserve-tijdstip slaat over.")
+        return 0
     ctx = build_live_context(cfg, bench, repo, day)
     result = DailyRun(ctx, day).run()
     print(json.dumps({"day": day.isoformat(), **result}, ensure_ascii=False, indent=2, default=str))
@@ -184,6 +193,7 @@ def main(argv=None):
     sub = p.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
     r.add_argument("--day")
+    r.add_argument("--skip-if-done", action="store_true", help="niets doen als vandaag al een geslaagde run is")
     sub.add_parser("check")
     s = sub.add_parser("simulate")
     s.add_argument("--days", type=int, default=25)

@@ -212,3 +212,9 @@ def test_metrics_z_move_and_vol():
     assert metrics.z_move(flat.iloc[:30], 20) is None
     rel = metrics.z_move(trend, 20, reference=trend)
     assert rel is None  # excess return nul -> geen spreiding
+
+
+def test_unknown_exposure_falls_back_to_role():
+    assert weighting.tier_from_exposure(None, False, CFG, "pure_play") == "pure_play"
+    assert weighting.tier_from_exposure(None, False, CFG, None) == "second_order"
+    assert weighting.tier_from_exposure(30, False, CFG, "pure_play") == "pick_and_shovel"  # getal wint van rol

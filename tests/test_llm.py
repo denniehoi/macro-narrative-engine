@@ -106,3 +106,12 @@ def test_research_searches_then_structures():
     assert "output_config" in seen[2] and "tools" not in seen[2]
     assert "https://example.com/pwr" in seen[2]["messages"][0]["content"]
     assert llm.usage["web_searches"] == 1
+
+
+def test_structured_retries_once_with_more_room_after_cutoff():
+    seen = []
+    llm = _llm([_msg([{"type": "text", "text": '{"candid', "citations": None}], "max_tokens"),
+                _msg([_text({"candidates": []})], "end_turn")], seen)
+    out = llm.structured("lite", "sys", "x", "submit_discovery", prompts.DISCOVERY_SCHEMA, max_tokens=8000)
+    assert out == {"candidates": []}
+    assert seen[0]["max_tokens"] == 8000 and seen[1]["max_tokens"] == 16000

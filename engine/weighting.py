@@ -19,13 +19,15 @@ from .lifecycle import capped_proportional
 TIERS = ("pure_play", "pick_and_shovel", "second_order")
 
 
-def tier_from_exposure(exposure_pct: Optional[float], pre_revenue: bool, cfg: dict) -> str:
-    """Tier volgt hard uit het omzetaandeel. Pre-revenue telt als pure play met eigen (lagere) cap."""
+def tier_from_exposure(exposure_pct: Optional[float], pre_revenue: bool, cfg: dict,
+                       role: Optional[str] = None) -> str:
+    """Tier volgt hard uit het omzetaandeel. Pre-revenue telt als pure play met eigen (lagere) cap.
+    Is het omzetaandeel onbekend, dan geldt de rol uit de zoekstap."""
     th = cfg["weighting"]["tier_exposure_pct"]
     if pre_revenue:
         return "pure_play"
     if exposure_pct is None:
-        return "second_order"
+        return role if role in TIERS else "second_order"
     if exposure_pct >= th["pure_play"]:
         return "pure_play"
     if exposure_pct >= th["pick_and_shovel"]:

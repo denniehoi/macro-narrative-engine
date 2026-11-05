@@ -211,3 +211,30 @@ def test_rerun_same_day_is_idempotent():
     run(start + timedelta(days=3))  # zelfde dag nog eens
     after = {t["slug"]: (t["r_score"], t["streak_in"], t["status"]) for t in store.select("topics")}
     assert before == after
+
+
+def test_build_members_uses_search_exposure_when_selection_omits_it():
+    from engine.stock_search import build_members
+
+    chosen = [{"symbol": "STNG", "exposure_pct": None, "pre_revenue": False, "rationale": "x", "subniche": "tankers"}]
+    by_sym = {"STNG": {"symbol": "STNG", "name": "Scorpio", "role": "pure_play", "exposure_pct": 90,
+                       "pre_revenue": False, "sigma": 0.4}}
+    m = build_members(chosen, by_sym, CFG)[0]
+    assert m["exposure_pct"] == 90 and m["tier"] == "pure_play"
+    by_sym["STNG"]["exposure_pct"] = None
+    assert build_members(chosen, by_sym, CFG)[0]["tier"] == "pure_play"  # rol als terugval
+
+
+def test_skip_if_done():
+    from engine.__main__ import already_ran
+
+    repo = Repo(MemoryStore())
+    day = date(2026, 11, 5)
+    assert not already_ran(repo, day)
+    rec = repo.start_run(day, False)
+    assert not already_ran(repo, day)          # nog bezig telt niet
+    repo.finish_run(rec["id"], {"status": "failed"})
+    assert not already_ran(repo, day)          # mislukt telt niet
+    rec = repo.start_run(day, False)
+    repo.finish_run(rec["id"], {"status": "partial"})
+    assert already_ran(repo, day)

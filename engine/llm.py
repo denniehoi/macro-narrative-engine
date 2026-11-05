@@ -73,12 +73,17 @@ class LLM:
     def structured(self, model_key: str, system: str, payload: dict | str, tool_name: str, schema: dict,
                    max_tokens: Optional[int] = None) -> dict:
         user = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False, default=str)
-        resp = self.client.messages.create(
-            model=self.cfg[model_key], max_tokens=max_tokens or self.cfg["max_tokens"],
-            system=system, messages=[{"role": "user", "content": user}],
-            output_config={"format": {"type": "json_schema", "schema": strict_schema(schema)}},
-        )
-        self._track(resp)
+        limit = max_tokens or self.cfg["max_tokens"]
+        for attempt in range(2):
+            resp = self.client.messages.create(
+                model=self.cfg[model_key], max_tokens=limit,
+                system=system, messages=[{"role": "user", "content": user}],
+                output_config={"format": {"type": "json_schema", "schema": strict_schema(schema)}},
+            )
+            self._track(resp)
+            if resp.stop_reason != "max_tokens" or attempt == 1:
+                break
+            limit = min(limit * 2, 32000)  # antwoord afgekapt: één keer opnieuw met meer ruimte
         if resp.stop_reason in ("refusal", "max_tokens"):
             raise LLMError(f"{tool_name}: gestopt ({resp.stop_reason})")
         try:

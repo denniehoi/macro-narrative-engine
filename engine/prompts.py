@@ -20,7 +20,8 @@ Taak: kies alleen events die een direct transmissiemechanisme hebben naar aandel
   dus wees specifiek (wie, wat, via welk kanaal naar welke sectoren).
 - keywords: 3-6 Engelse zoekfrasen van 2-4 woorden die specifiek genoeg zijn (niet "oil", wel "Strait of Hormuz").
 - title: korte Nederlandse titel.
-Lever liever nul kandidaten dan zwakke. Antwoord uitsluitend via de tool."""
+Geef maximaal 8 kandidaten en houd transmission op één korte zin.
+Lever liever nul kandidaten dan zwakke."""
 
 DISCOVERY_SCHEMA = {
     "type": "object",
@@ -186,7 +187,8 @@ met hun geschatte omzetblootstelling, bron, volatiliteit en dagomzet.
 
 - Kies {min_n} tot {max_n} namen die samen het thema zo zuiver mogelijk afdekken over de keten.
 - Spreid over deelniches: maximaal 2 namen per deelniche (bijv. niet drie SMR-bedrijven).
-- Corrigeer exposure_pct als de bron dat rechtvaardigt; de tier wordt hierna hard uit dit getal berekend
+- exposure_pct is verplicht voor elk bedrijf met omzet: neem het getal uit de kandidatenlijst over of corrigeer het
+  als de bron dat rechtvaardigt; de tier wordt hierna hard uit dit getal berekend
   (>= 50% pure play, 20-50% pick-and-shovel, < 20% second order), dus wees precies en eerlijk.
 - rationale: één Nederlandse zin waarom deze naam erin zit.
 Antwoord uitsluitend via de tool."""
