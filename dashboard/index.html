@@ -56,6 +56,16 @@ header.top { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: baselin
   text-underline-offset: 2px; }
 
 section { margin-top: 32px; }
+.tabs { display: flex; gap: 4px; margin-top: 14px; border-bottom: 1px solid var(--rule); }
+.tabs button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 8px 12px 9px; cursor: pointer;
+  font-weight: 600; color: var(--muted); margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.bigstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 20px; }
+.bigstats .panel { padding: 14px 16px; }
+.bigstats .label { color: var(--muted); font-size: 13px; }
+.bigstats .value { font-family: var(--display); font-weight: 700; font-size: 26px; line-height: 1.2; margin-top: 2px; }
+.legend-inline { display: flex; gap: 16px; font-size: 13px; color: var(--muted); margin: 0 4px 6px; }
+.legend-inline i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
 .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap;
   margin-bottom: 12px; }
 .panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; }
@@ -103,6 +113,7 @@ td.num, th.num { text-align: right; white-space: nowrap; }
 tbody tr.row { cursor: pointer; }
 tbody tr.row:hover td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
 tr.detail td { background: var(--paper); padding: 14px 16px 18px; }
+tr.group td { background: var(--paper); padding-top: 12px; }
 .tname { display: flex; gap: 8px; align-items: flex-start; font-weight: 600; }
 .tname .swatch { margin-top: 3px; flex: none; }
 .tag { display: inline-block; padding: 0 6px; border-radius: 3px; font-size: 12px; font-weight: 500;
@@ -274,8 +285,12 @@ function render() {
       <button class="btn secondary" style="margin-top:18px" onclick="logout()">Uitloggen</button></div>`;
     return;
   }
-  app.innerHTML = [header(), s.demo ? `<p class="notice" style="margin-top:16px">Voorbeelddata uit een gesimuleerde maand. Geen echte posities.</p>` : "",
-    approvalsSection(), hero(), activeSection(), historySection(), portfolioSection(), closedSection(), onDeckSection(), runsSection()].join("");
+  const tab = currentTab();
+  const body = tab === "rendement"
+    ? [returnsSummary(), navChart(), positionsSection(), closedSection()]
+    : [approvalsSection(), hero(), activeSection(), historySection(), portfolioSection(), onDeckSection(), runsSection()];
+  app.innerHTML = [header(), tabs(tab), s.demo ? `<p class="notice" style="margin-top:16px">Voorbeelddata uit een gesimuleerde maand. Geen echte posities.</p>` : "",
+    ...body].join("");
   bind();
 }
 
@@ -346,7 +361,8 @@ function paperLine(snap) {
   return `<div class="paperline"><span>Papieren portefeuille <strong>${eur.format(p.nav)}</strong></span>
     <span>${ret(p.return)} sinds ${short(p.start_day)}</span>
     <span>Wereldindex (ACWI) ${ret(p.bench_return)}</span>
-    <span>Verschil ${pp(p.bench_return == null ? null : p.return - p.bench_return)}</span></div>`;
+    <span>Verschil ${pp(p.bench_return == null ? null : p.return - p.bench_return)}</span>
+    <a href="#rendement">Details</a></div>`;
 }
 
 function approvalsSection() {
@@ -478,7 +494,7 @@ function historySection() {
   const cashBottom = cum.map((v, i) => `${xs(i)},${ys(v)}`).reverse().join(" L");
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((v) => `<line x1="${L}" x2="${W - R}" y1="${ys(v)}" y2="${ys(v)}"/><text x="${L - 6}" y="${ys(v) + 4}" text-anchor="end">${v * 100}%</text>`).join("");
   const step = Math.max(1, Math.ceil(state.snaps.length / 6));
-  const xt = state.snaps.map((s, i) => (i % step === 0 || i === state.snaps.length - 1) ? `<text x="${xs(i)}" y="${H - 6}" text-anchor="${i === 0 ? "start" : i === state.snaps.length - 1 ? "end" : "middle"}">${short(s.day)}</text>` : "").join("");
+  const xt = state.snaps.map((s, i) => ((i % step === 0 && state.snaps.length - 1 - i >= step / 2) || i === state.snaps.length - 1) ? `<text x="${xs(i)}" y="${H - 6}" text-anchor="${i === 0 ? "start" : i === state.snaps.length - 1 ? "end" : "middle"}">${short(s.day)}</text>` : "").join("");
   return `<section aria-label="Verloop"><div class="section-head"><h2>Verloop</h2><span class="small muted">Gewicht per topic per dag; gearceerd is cash</span></div>
     <div class="panel chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gewicht per topic over de tijd">${hatch()}
       <g class="axis">${ticks}</g>${layers}<path d="M${cashTop} L${cashBottom} Z" fill="url(#hatch)" opacity=".9"><title>Cash</title></path><g class="axis">${xt}</g></svg></div></section>`;
@@ -508,8 +524,76 @@ function portfolioSection() {
       : `<div class="panel empty">Nog geen doelen. Die verschijnen zodra een topic Active wordt.</div>`}</section>`;
 }
 
+const currentTab = () => (location.hash === "#rendement" ? "rendement" : "overzicht");
+function tabs(tab) {
+  const t = (id, label) => `<button role="tab" data-tab="${id}" aria-selected="${tab === id}">${label}</button>`;
+  return `<nav class="tabs" role="tablist" aria-label="Weergave">${t("overzicht", "Overzicht")}${t("rendement", "Rendement")}</nav>`;
+}
+
+function returnsSummary() {
+  const p = state.snap?.paper || {};
+  if (p.nav == null) return `<section><div class="panel empty">Nog geen papieren portefeuille. Die start bij de eerste belegging.</div></section>`;
+  const invested = p.nav - (p.cash || 0);
+  const stat = (label, value, sub = "") => `<div class="panel"><div class="label">${label}</div><div class="value">${value}</div>${sub ? `<div class="small muted">${sub}</div>` : ""}</div>`;
+  return `<section aria-label="Papieren portefeuille" style="margin-top:20px">
+    <h2>Papieren portefeuille</h2>
+    <p class="muted small">Gestart met ${eur.format(p.start_value || 0)}${p.start_day ? ` op ${esc(dfLong.format(day(p.start_day)))}` : ""}. In euro's, zonder transactiekosten en belasting.</p>
+    <div class="bigstats">
+      ${stat("Waarde nu", eur.format(p.nav), `${eur.format(invested)} belegd, ${eur.format(p.cash || 0)} cash`)}
+      ${stat("Rendement", ret(p.start_day ? p.return : null), p.start_day ? `${eur.format(p.nav - (p.start_value || 0))} resultaat` : "nog niet belegd")}
+      ${stat("Wereldindex (ACWI)", ret(p.bench_return), "zelfde bedrag, zelfde startdag")}
+      ${stat("Verschil", pp(p.bench_return == null ? null : p.return - p.bench_return), "t.o.v. de wereldindex")}
+    </div></section>`;
+}
+
+function navChart() {
+  const pts = state.snaps.filter((s) => s.paper && s.paper.start_day && s.day >= s.paper.start_day);
+  if (pts.length < 2) return `<section><h2>Verloop</h2><div class="panel empty">De lijn verschijnt na twee dagen met een belegging.</div></section>`;
+  const W = window.innerWidth < 720 ? 420 : 720, H = 230, L = 64, R = 10, T = 10, B = 24;
+  const navs = pts.map((s) => s.paper.nav), bench = pts.map((s) => s.paper.bench_nav ?? s.paper.start_value);
+  let lo = Math.min(...navs, ...bench), hi = Math.max(...navs, ...bench);
+  const pad = Math.max((hi - lo) * 0.1, (hi || 1) * 0.002); lo -= pad; hi += pad;
+  const xs = (i) => L + (i * (W - L - R)) / (pts.length - 1);
+  const ys = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+  const line = (vals) => vals.map((v, i) => `${i ? "L" : "M"}${xs(i).toFixed(1)},${ys(v).toFixed(1)}`).join(" ");
+  const ticks = [0, 0.5, 1].map((f) => lo + f * (hi - lo)).map((v) => `<line x1="${L}" x2="${W - R}" y1="${ys(v)}" y2="${ys(v)}"/><text x="${L - 6}" y="${ys(v) + 4}" text-anchor="end">${eur.format(v)}</text>`).join("");
+  const step = Math.max(1, Math.ceil(pts.length / 6));
+  const xt = pts.map((s, i) => ((i % step === 0 && pts.length - 1 - i >= step / 2) || i === pts.length - 1) ? `<text x="${xs(i)}" y="${H - 6}" text-anchor="${i === 0 ? "start" : i === pts.length - 1 ? "end" : "middle"}">${short(s.day)}</text>` : "").join("");
+  return `<section aria-label="Verloop papieren portefeuille"><div class="section-head"><h2>Verloop</h2></div>
+    <div class="panel chart"><div class="legend-inline"><span><i style="background:var(--accent)"></i>Papieren portefeuille</span><span><i style="background:var(--cash)"></i>Wereldindex (ACWI)</span></div>
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Papieren portefeuille tegen de wereldindex"><g class="axis">${ticks}${xt}</g>
+      <path d="${line(bench)}" fill="none" stroke="var(--cash)" stroke-width="2" stroke-dasharray="5 4"/>
+      <path d="${line(navs)}" fill="none" stroke="var(--accent)" stroke-width="2.5"/></svg></div></section>`;
+}
+
+function positionsSection() {
+  const p = state.snap?.paper || {};
+  const rows = [];
+  for (const t of state.tracked.filter((x) => x.status === "active")) {
+    const b = state.basketOf[t.id];
+    if (!b) continue;
+    const per = b.perf?.per_symbol || {};
+    const tr = state.topicReturn(t);
+    rows.push(`<tr class="group"><td colspan="7"><div class="tname"><span class="swatch" style="background:${state.color(t.id)}"></span>
+      <span>${esc(t.title)} <span class="small muted">sinds ${short(tr?.since || b.entry_day)}: ${ret(tr?.r)}, ACWI ${ret(tr?.bench)}</span></span></div></td></tr>`);
+    for (const m of b.members) {
+      const r = per[m.symbol]?.eur, v = p.values?.[m.symbol];
+      const pnl = v != null && r != null ? v - v / (1 + r) : null;
+      rows.push(`<tr><td><b>${esc(m.symbol)}</b></td><td>${esc(m.name)}</td><td class="num hide-sm">${short(b.entry_day)}</td>
+        <td class="num hide-sm">${m.entry_price ? `${nf2.format(m.entry_price)} ${esc(m.currency || "")}` : "–"}</td>
+        <td class="num">${v != null ? eur.format(v) : "–"}</td><td class="num">${ret(r)}</td>
+        <td class="num">${pnl != null ? `<span class="${pnl > 0.5 ? "pos" : pnl < -0.5 ? "neg" : ""}">${eur.format(pnl)}</span>` : "–"}</td></tr>`);
+    }
+  }
+  if (!rows.length) return `<section><h2>Open posities</h2><div class="panel empty">Geen open posities.</div></section>`;
+  return `<section aria-label="Open posities"><div class="section-head"><h2>Open posities</h2>
+    <span class="small muted">Rendement in euro's sinds instap van het mandje</span></div>
+    <div class="panel tablewrap"><table><thead><tr><th>Ticker</th><th>Naam</th><th class="num hide-sm">Instap</th><th class="num hide-sm">Instapkoers</th>
+    <th class="num">Waarde</th><th class="num">Rendement</th><th class="num">Resultaat</th></tr></thead><tbody>${rows.join("")}</tbody></table></div></section>`;
+}
+
 function closedSection() {
-  if (!state.closed.length) return "";
+  if (!state.closed.length) return `<section><h2>Afgesloten mandjes</h2><div class="panel empty">Nog geen afgesloten mandjes. Die verschijnen bij de eerste uitstap of vervanging.</div></section>`;
   const why = (b) => (b.status === "exit" ? "topic uit Active" : "vervangen door nieuw mandje");
   const rows = state.closed.slice(0, 20).map((b) => {
     const t = state.byId[b.topic_id];
@@ -558,6 +642,10 @@ function runsSection() {
 }
 
 function bind() {
+  app.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => {
+    history.replaceState(null, "", b.dataset.tab === "rendement" ? "#rendement" : location.pathname + location.search);
+    render(); window.scrollTo(0, 0);
+  }));
   app.querySelectorAll("tr.row").forEach((tr) => {
     const toggle = () => { openRow = openRow === tr.dataset.topic ? null : tr.dataset.topic; render();
       document.querySelector(`tr.row[data-topic="${openRow || tr.dataset.topic}"]`)?.focus(); };
@@ -622,6 +710,7 @@ if (!DEMO) {
   if (!window.supabase) { app.innerHTML = `<div class="panel empty">De Supabase-bibliotheek kon niet laden. Controleer je internetverbinding.</div>`; }
   else { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true } }); refresh(); }
 } else { refresh(); }
+window.addEventListener("hashchange", () => { if (state) { render(); window.scrollTo(0, 0); } });
 </script>
 </body>
 </html>
