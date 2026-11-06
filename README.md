@@ -89,6 +89,10 @@ De Supabase-database is al aangemaakt (`macro-narrative`, Frankfurt) met tabelle
 
 Het dashboard staat op **https://denniehoi.github.io/macro-dashboard/**, vanuit de publieke repository `denniehoi/macro-dashboard`. Die bevat alleen `index.html` en de demo-data. Wijzig je `dashboard/` hier, kopieer het dan ook daarheen. Met `?demo` achter de link zie je gesimuleerde data.
 
+## Planning
+
+GitHub start geplande workflows soms uren te laat of helemaal niet. Daarom start **Supabase** de ochtendrun: pg_cron roept elke dag om 05:17 UTC (06:17 in de winter, 07:17 in de zomer) de functie `trigger-run` aan. De GitHub-tijdstippen in `daily.yml` blijven als reserve. Beide slaan over als de run van die dag al gelukt is. Het tijdstip wijzig je met `select cron.alter_job((select jobid from cron.job where jobname = 'dagelijkse-run'), schedule := '...')`.
+
 ## Handmatige run vanuit het dashboard
 
 Goedkeurders zien rechtsboven de knop **Run starten**. Die roept de Supabase-functie `trigger-run` aan (`supabase/functions/trigger-run`). Die functie controleert de login en de rol, en start daarna de workflow *Dagelijkse run* bij GitHub. De GitHub-sleutel staat alleen in Supabase, als secret `GH_DISPATCH_TOKEN`. Het is een fine-grained token met alleen *Actions: read and write* op deze repository.

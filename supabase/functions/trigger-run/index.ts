@@ -1,5 +1,7 @@
-// Start de dagelijkse run handmatig vanuit het dashboard.
-// Alleen ingelogde goedkeurders; maximaal 1 keer per 15 minuten en 4 keer per 24 uur.
+// Start de dagelijkse run bij GitHub.
+// - Handmatig vanuit het dashboard: alleen ingelogde goedkeurders; max 1 per 15 minuten en 4 per 24 uur.
+// - Elke ochtend door de planning in Supabase (pg_cron) met een geheim dat alleen de database kent;
+//   die run slaat over als er vandaag al een geslaagde run is.
 // De GitHub-sleutel (GH_DISPATCH_TOKEN) staat alleen hier, nooit in de webpagina.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -31,6 +33,17 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false },
   });
 
+  // 0. Geplande ochtendrun vanuit de database.
+  const cronSecret = req.headers.get("x-cron-secret");
+  if (cronSecret) {
+    const { data: ok } = await admin.rpc("verify_cron_secret", { p_secret: cronSecret });
+    if (ok !== true) return reply(401, { error: "Ongeldig geheim" });
+    const res = await dispatch({ skip_if_done: "true" });
+    await admin.from("run_requests").insert({ requested_by: "planning", status: res.ok ? "sent" : "failed",
+                                              message: res.ok ? "ochtendrun" : res.message });
+    return reply(res.ok ? 200 : 502, res.ok ? { ok: true } : { error: res.message });
+  }
+
   // 1. Wie vraagt het?
   const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
   const { data: auth, error: authError } = await admin.auth.getUser(jwt);
@@ -52,7 +65,7 @@ Deno.serve(async (req: Request) => {
   }
   const dayAgo = new Date(Date.now() - 24 * 3600_000).toISOString();
   const { data: recent } = await admin.from("run_requests").select("requested_at").eq("status", "sent")
-    .gte("requested_at", dayAgo).order("requested_at", { ascending: false });
+    .neq("requested_by", "planning").gte("requested_at", dayAgo).order("requested_at", { ascending: false });
   if (recent?.length) {
     const minutes = (Date.now() - new Date(recent[0].requested_at).getTime()) / 60_000;
     if (minutes < COOLDOWN_MIN) {
@@ -66,8 +79,18 @@ Deno.serve(async (req: Request) => {
   }
 
   // 3. GitHub laten starten.
+  const res = await dispatch({});
+  if (!res.ok) {
+    await log("failed", res.message);
+    return reply(502, { error: `GitHub weigerde de run. Controleer de GitHub-sleutel. (${res.message})` });
+  }
+  await log("sent", "gestart");
+  return reply(200, { ok: true });
+});
+
+async function dispatch(inputs: Record<string, string>): Promise<{ ok: boolean; message: string }> {
   const token = Deno.env.get("GH_DISPATCH_TOKEN");
-  if (!token) return reply(500, { error: "De GitHub-sleutel ontbreekt in Supabase (GH_DISPATCH_TOKEN)." });
+  if (!token) return { ok: false, message: "GH_DISPATCH_TOKEN ontbreekt" };
   const gh = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW}/dispatches`, {
     method: "POST",
     headers: {
@@ -77,13 +100,8 @@ Deno.serve(async (req: Request) => {
       "User-Agent": "macro-narrative-dashboard",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ ref: "main" }),
+    body: JSON.stringify({ ref: "main", inputs }),
   });
-  if (gh.status !== 204) {
-    const text = (await gh.text()).slice(0, 300);
-    await log("failed", `GitHub ${gh.status}: ${text}`);
-    return reply(502, { error: `GitHub weigerde de run (${gh.status}). Controleer de GitHub-sleutel.` });
-  }
-  await log("sent", "gestart");
-  return reply(200, { ok: true });
-});
+  if (gh.status === 204) return { ok: true, message: "gestart" };
+  return { ok: false, message: `GitHub ${gh.status}: ${(await gh.text()).slice(0, 200)}` };
+}
