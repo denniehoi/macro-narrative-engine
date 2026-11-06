@@ -2,8 +2,9 @@ name: Dagelijkse run
 
 on:
   schedule:
-    # GitHub start geplande runs soms uren te laat. Daarom drie tijdstippen (UTC);
-    # de latere slaan over zodra de run van vandaag gelukt is (--skip-if-done).
+    # De vaste ochtendrun start Supabase (pg_cron, 05:17 UTC) via de functie trigger-run.
+    # Deze GitHub-tijdstippen zijn reserve: GitHub start ze soms uren te laat of helemaal niet.
+    # Ze slaan over zodra de run van vandaag gelukt is (--skip-if-done).
     - cron: "17 5 * * *"   # 06:17 winter / 07:17 zomer
     - cron: "47 6 * * *"
     - cron: "17 9 * * *"
@@ -12,6 +13,10 @@ on:
       day:
         description: "Rundatum JJJJ-MM-DD (leeg = vandaag)"
         required: false
+      skip_if_done:
+        description: "Overslaan als vandaag al een geslaagde run is (gebruikt door de planning in Supabase)"
+        required: false
+        default: "false"
 
 concurrency:
   group: daily-run
@@ -36,7 +41,8 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           DAY: ${{ inputs.day }}
           EVENT: ${{ github.event_name }}
+          SKIP: ${{ inputs.skip_if_done }}
         run: |
           if [ -n "$DAY" ]; then python -m engine run --day "$DAY"
-          elif [ "$EVENT" = "schedule" ]; then python -m engine run --skip-if-done
+          elif [ "$EVENT" = "schedule" ] || [ "$SKIP" = "true" ]; then python -m engine run --skip-if-done
           else python -m engine run; fi

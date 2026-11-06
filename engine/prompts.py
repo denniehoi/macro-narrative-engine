@@ -58,7 +58,8 @@ Je krijgt de these (main_macro_driver) en een steekproef van artikelen van giste
   Een artikel dat alleen een zoekwoord noemt, clickbait of een ander onderwerp telt niet.
 - backward_looking_share (0-1): het aandeel relevante artikelen dat alleen terugblikt
   (samenvatting, "wat we leerden", afgeronde zaak) in plaats van nieuwe ontwikkelingen te melden.
-- emerging_tags: maximaal 5 nieuwe deelthema's die je in de artikelen ziet opkomen (Nederlands, kort).
+- emerging_tags: maximaal 5 nieuwe deelthema's die je in de artikelen ziet opkomen (Nederlands, 1-4 woorden).
+- note: één korte zin. Geef geen bespreking per artikel.
 Antwoord uitsluitend via de tool."""
 
 ALIGNMENT_SCHEMA = {
@@ -68,7 +69,7 @@ ALIGNMENT_SCHEMA = {
         "on_thesis_count": {"type": "integer", "minimum": 0},
         "backward_looking_share": {"type": "number", "minimum": 0, "maximum": 1},
         "emerging_tags": {"type": "array", "items": {"type": "string"}, "maxItems": 5},
-        "note": {"type": "string"},
+        "note": {"type": "string", "description": "Eén korte zin."},
     },
     "required": ["alignment", "on_thesis_count", "backward_looking_share", "emerging_tags", "note"],
 }

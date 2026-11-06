@@ -115,3 +115,10 @@ def test_structured_retries_once_with_more_room_after_cutoff():
     out = llm.structured("lite", "sys", "x", "submit_discovery", prompts.DISCOVERY_SCHEMA, max_tokens=8000)
     assert out == {"candidates": []}
     assert seen[0]["max_tokens"] == 8000 and seen[1]["max_tokens"] == 16000
+
+
+def test_max_tokens_never_below_configured_default():
+    seen = []
+    llm = _llm([_msg([_text({"ok": True})], "end_turn")], seen)
+    llm.structured("lite", "sys", "x", "ok", {"type": "object", "properties": {"ok": {"type": "boolean"}}}, max_tokens=50)
+    assert seen[0]["max_tokens"] == CFG["models"]["max_tokens"]

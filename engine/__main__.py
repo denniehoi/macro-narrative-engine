@@ -101,7 +101,7 @@ def cmd_check(args, cfg, bench):
         for key in ("lite", "reasoning"):
             out = llm.structured(key, "Antwoord in het schema.", "Zeg ok.", "ok",
                                  {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]},
-                                 max_tokens=50)
+                                 max_tokens=500)
             print(f"Anthropic: ok ({cfg['models'][key]}) -> {out}")
     except Exception as e:  # noqa: BLE001
         ok = False

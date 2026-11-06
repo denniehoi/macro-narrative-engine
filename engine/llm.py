@@ -73,7 +73,8 @@ class LLM:
     def structured(self, model_key: str, system: str, payload: dict | str, tool_name: str, schema: dict,
                    max_tokens: Optional[int] = None) -> dict:
         user = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False, default=str)
-        limit = max_tokens or self.cfg["max_tokens"]
+        # max_tokens is een plafond, geen kostenpost: nooit lager dan de standaard uit de instellingen.
+        limit = max(max_tokens or 0, self.cfg["max_tokens"])
         for attempt in range(2):
             resp = self.client.messages.create(
                 model=self.cfg[model_key], max_tokens=limit,

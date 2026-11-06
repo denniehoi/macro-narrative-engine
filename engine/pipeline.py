@@ -198,7 +198,7 @@ class DailyRun:
                     "lite", prompts.ALIGNMENT_SYSTEM,
                     {"these": t["main_macro_driver"], "titel": t["title"],
                      "artikelen": [{"titel": a["title"], "tekst": a["body"], "bron": a.get("source")} for a in arts]},
-                    "submit_alignment", prompts.ALIGNMENT_SCHEMA, max_tokens=800)
+                    "submit_alignment", prompts.ALIGNMENT_SCHEMA)
                 o["alignment"] = scoring.clip01(float(al["alignment"]))
                 o["backward"] = scoring.clip01(float(al.get("backward_looking_share", 0)))
                 o["tags"] = al.get("emerging_tags", [])[:5]
