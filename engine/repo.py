@@ -106,6 +106,10 @@ class Repo:
     def set_basket_status(self, topic_id: str, status: str) -> None:
         self.s.update("baskets", [("topic_id", "eq", topic_id), ("status", "eq", "active")], {"status": status})
 
+    def set_basket_version(self, topic_id: str, version: int) -> None:
+        self.s.update("baskets", [("topic_id", "eq", topic_id), ("status", "eq", "active")],
+                      {"topic_version": version})
+
     def unclosed_trades(self) -> list[dict]:
         """Mandjes die beëindigd zijn (uitstap of vervangen) maar nog geen uitstapkoers hebben."""
         rows = [b for b in self.s.select("baskets", [("status", "in", ["exit", "archived"])])

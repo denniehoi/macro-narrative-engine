@@ -514,9 +514,14 @@ class DailyRun:
                 keep, absorb = sorted((a, b), key=lambda t: t.get("_i") or 0, reverse=True)
             else:
                 keep, absorb = (a, b) if a["status"] == "active" else (b, a)
-            pending = [x for x in self.repo.approvals(["pending"]) if x["kind"] == "merge"
-                       and {x["topic_id"], x.get("other_topic_id")} == {keep["id"], absorb["id"]}]
-            if not pending:
+            pair = {keep["id"], absorb["id"]}
+            earlier = [x for x in self.repo.approvals(["pending", "rejected"]) if x["kind"] == "merge"
+                       and {x["topic_id"], x.get("other_topic_id")} == pair]
+            recently_rejected = any(
+                x["status"] == "rejected" and x.get("decided_at")
+                and datetime.fromisoformat(str(x["decided_at"]).replace("Z", "+00:00")) > self.now - timedelta(days=30)
+                for x in earlier)
+            if not any(x["status"] == "pending" for x in earlier) and not recently_rejected:
                 self.repo.create_approval({
                     "kind": "merge", "topic_id": keep["id"], "other_topic_id": absorb["id"],
                     "summary": f"Samenvoegen: '{absorb['title']}' in '{keep['title']}' (dubbeltelling)",
@@ -531,6 +536,12 @@ class DailyRun:
                                                        + (absorb.get("source_event_uris") or [])))[:20]
         keep["version"] = int(keep.get("version", 1)) + 1
         self.repo.add_version(keep, f"{reason}: {absorb['slug']}")
+        # De these (driver en benchmarks) blijft gelijk; alleen zoekwoorden komen erbij. Het mandje blijft dus
+        # geldig en hoort bij de nieuwe versie; anders zou een merge onnodig een nieuw mandje (en een papieren
+        # verkoop en aankoop) veroorzaken.
+        self.repo.set_basket_version(keep["id"], keep["version"])
+        if keep["id"] in getattr(self, "baskets", {}):
+            self.baskets[keep["id"]]["topic_version"] = keep["version"]
         if absorb["status"] == "active":
             self.repo.set_basket_status(absorb["id"], "exit")
         absorb["status"], absorb["merged_into"], absorb["retired_at"] = "merged", keep["id"], self.day

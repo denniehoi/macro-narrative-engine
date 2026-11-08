@@ -18,7 +18,8 @@ Taak: kies alleen events die een direct transmissiemechanisme hebben naar aandel
 - high_impact: alleen true voor een shock die nu al grote koersbewegingen veroorzaakt of kan veroorzaken.
 - main_macro_driver: één Nederlandse zin die het mechanisme beschrijft. Dit wordt de meetlat waarmee artikelen worden beoordeeld,
   dus wees specifiek (wie, wat, via welk kanaal naar welke sectoren).
-- keywords: 3-6 Engelse zoekfrasen van 2-4 woorden die specifiek genoeg zijn (niet "oil", wel "Strait of Hormuz").
+- keywords: 3-6 Engelse zoekfrasen van 2-4 woorden die specifiek genoeg zijn (niet "oil", wel "Strait of Hormuz"),
+  samen maximaal 15 woorden, belangrijkste eerst.
 - title: korte Nederlandse titel.
 Geef maximaal 8 kandidaten en houd transmission op één korte zin.
 Lever liever nul kandidaten dan zwakke."""

@@ -53,6 +53,18 @@ class NewsApiClient:
             raise NewsApiError(f"{path}: {data['error']}")
         return data
 
+    def _keywords(self, keywords: list[str]) -> list[str]:
+        """newsAPI.ai telt losse woorden, niet frasen (limiet 15 in het huidige abonnement).
+        Neem frasen op volgorde mee tot het budget vol is; de eerste frasen zijn de kern van het topic."""
+        budget = int(self.cfg.get("max_keyword_words", 15))
+        out, used = [], 0
+        for k in keywords or []:
+            n = len(str(k).split())
+            if n and used + n <= budget:
+                out.append(k)
+                used += n
+        return out or list(keywords or [])[:1]
+
     def _base(self, day: date) -> dict:
         return {"lang": self.cfg["lang"], "dateStart": day.isoformat(), "dateEnd": day.isoformat(),
                 "forceMaxDataTimeWindow": 31}
@@ -61,7 +73,7 @@ class NewsApiClient:
         """Volume (totalResults) en een steekproef van artikelen voor de alignment-check. 1 token."""
         body = {
             **self._base(day),
-            "keyword": keywords, "keywordOper": "or", "keywordLoc": "body,title",
+            "keyword": self._keywords(keywords), "keywordOper": "or", "keywordLoc": "body,title",
             "isDuplicateFilter": "skipDuplicates", "dataType": ["news"],
             "articlesSortBy": "rel", "articlesCount": self.cfg["articles_per_topic"],
             "includeArticleSentiment": True, "resultType": "articles",
@@ -80,7 +92,7 @@ class NewsApiClient:
         start = end - timedelta(days=days - 1)
         body = {
             "lang": self.cfg["lang"], "dateStart": start.isoformat(), "dateEnd": end.isoformat(),
-            "forceMaxDataTimeWindow": 31, "keyword": keywords, "keywordOper": "or",
+            "forceMaxDataTimeWindow": 31, "keyword": self._keywords(keywords), "keywordOper": "or",
             "keywordLoc": "body,title", "isDuplicateFilter": "skipDuplicates", "resultType": "timeAggr",
         }
         data = self._post("/article/getArticles", body, COST_TIME_AGGR)

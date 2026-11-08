@@ -323,3 +323,56 @@ def test_rerun_with_live_prices_keeps_entry_and_paper_consistent():
     tw = sum(x["weight"] for x in snap["topic_weights"] if x["topic_id"] == basket["topic_id"])
     assert b["perf"]["return_eur"] == pytest.approx(0.05 * (1 - b["cash_share"]), abs=1e-5)  # gewichten afgerond
     assert snap["paper"]["nav"] / 100_000 - 1 == pytest.approx(tw * b["perf"]["return_eur"], abs=1e-6)
+
+
+def test_keywords_stay_within_word_budget():
+    seen = []
+
+    def handler(req):
+        seen.append(json.loads(req.content))
+        return httpx.Response(200, json={"articles": {"totalResults": 1, "results": []}})
+
+    c, _ = _news_client(handler)
+    kws = ["Strait of Hormuz", "US strikes Iran", "Iran oil supply risk", "Pentagon Iran options",
+           "Bank of England rate hike", "UK inflation energy prices", "gilt yields rise", "Iran war inflation"]
+    c.topic_articles(kws, date(2026, 11, 7))
+    sent = seen[0]["keyword"]
+    assert sum(len(k.split()) for k in sent) <= 15
+    assert sent[:4] == kws[:4]  # de kern van het topic gaat voor
+
+
+def _ctx(store):
+    world = FakeWorld(date(2026, 10, 1))
+    return Context(cfg=CFG, bench=BENCH, repo=Repo(store), news=FakeNews(world), poly=FakePoly(),
+                   market=FakeMarket(world), llm=FakeLLM(), dry_run=True,
+                   now=datetime(2026, 11, 8, 6, 0, tzinfo=timezone.utc))
+
+
+def test_merge_keeps_basket_valid():
+    store = MemoryStore()
+    ctx = _ctx(store)
+    keep = ctx.repo.create_topic({"slug": "a", "title": "A", "main_macro_driver": "x", "keywords": ["k1"],
+                                  "status": "active", "version": 1})
+    absorb = ctx.repo.create_topic({"slug": "b", "title": "B", "main_macro_driver": "y", "keywords": ["k2"],
+                                    "status": "on_deck", "version": 1})
+    ctx.repo.save_basket(keep, "promotie", [{"symbol": "X", "tier": "pure_play", "weight": 1.0}], 0.0, {})
+    run = DailyRun(ctx, date(2026, 11, 8))
+    run.merge_topics(keep, absorb, "test")
+    basket = store.select("baskets", [("status", "eq", "active")])[0]
+    assert keep["version"] == 2 and basket["topic_version"] == 2
+    assert keep["keywords"] == ["k1", "k2"]
+
+
+def test_rejected_merge_is_not_asked_again():
+    store = MemoryStore()
+    ctx = _ctx(store)
+    a = ctx.repo.create_topic({"slug": "a", "title": "A", "main_macro_driver": "x", "status": "active", "version": 1})
+    b = ctx.repo.create_topic({"slug": "b", "title": "B", "main_macro_driver": "y", "status": "on_deck", "version": 1})
+    ctx.repo.create_approval({"kind": "merge", "topic_id": a["id"], "other_topic_id": b["id"], "summary": "s",
+                              "status": "rejected", "decided_at": "2026-11-06T15:46:00+00:00",
+                              "expires_at": "2026-11-08T00:00:00+00:00"})
+    run = DailyRun(ctx, date(2026, 11, 8))
+    run.topics = [dict(a, _i=70), dict(b, _i=50)]
+    run.overlaps = [("a", "b")]
+    run.merges()
+    assert len(store.select("approvals")) == 1

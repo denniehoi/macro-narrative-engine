@@ -12,6 +12,7 @@ newsapi:
   base_url: https://eventregistry.org/api/v1
   lang: eng
   daily_token_limit: 60       # harde daglimiet, zodat een bug niet de maand opmaakt
+  max_keyword_words: 15       # newsAPI.ai telt losse woorden over alle zoekfrasen samen
   monthly_token_limit: 4500   # 5K-plan, met marge
   articles_per_topic: 30      # 1 token per topic per dag
   backfill_days: 30           # eenmalig per nieuw topic (timeAggr, 5 tokens)
