@@ -627,13 +627,28 @@ function closedSection() {
     <th class="num">Rendement</th><th class="num hide-sm">ACWI</th><th class="num">Verschil</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
 }
 
+// Eerlijke uitleg per radar-topic: staat er een verzoek open, en zo niet, wat ontbreekt er nog?
+function radarStatus(t, r) {
+  const open = state.approvals.find((a) => a.topic_id === t.id && a.status === "pending" && new Date(a.expires_at) > new Date());
+  if (open) return "Wacht op jullie goedkeuring: zie het verzoek bovenaan Overzicht";
+  const decided = state.approvals.find((a) => a.topic_id === t.id && a.status !== "pending");
+  if (decided) return `Shock-radar: verzoek ${decided.status === "rejected" ? "afgewezen" : decided.status === "expired" ? "verlopen" : "afgehandeld"}`;
+  const until = t.first_seen ? short(new Date(day(t.first_seen).getTime() + 7 * 864e5).toISOString()) : null;
+  const missing = [];
+  if (r.alignment == null || r.alignment < 0.6)
+    missing.push(`maar ${pct(r.alignment)} van de artikelen gaat echt over de these (minimaal 60%)`);
+  if (!t.high_impact && !(r.volume_z >= 3)) missing.push("geen volumepiek");
+  if (!missing.length) return "Shock-radar: verzoek volgt bij de volgende run";
+  return `Shock-radar, nog geen goedkeuringsverzoek: ${missing.join(" en ")}. Wordt elke dag opnieuw bekeken${until ? `, tot ${until}` : ""}.`;
+}
+
 function onDeckSection() {
   const list = state.tracked.filter((t) => t.status !== "active")
     .sort((a, b) => (state.lastDay[b.id]?.i_score || 0) - (state.lastDay[a.id]?.i_score || 0));
   if (!list.length) return "";
   const why = (t, r) => {
     const g = r.gates || {};
-    if (t.status === "radar") return "Shock-radar: komt alleen binnen na goedkeuring";
+    if (t.status === "radar") return radarStatus(t, r);
     if (g.horizon === false) return "Horizon korter dan 3 maanden";
     if (g.thesis === false) return "These te zwak (alignment)";
     if (g.investable === false) return "Mandje kwam niet aan 4 tickers";
