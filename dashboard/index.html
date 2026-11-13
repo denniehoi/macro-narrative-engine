@@ -182,6 +182,7 @@ const SUPABASE_URL = "https://cmmikebzpakirfowzqjp.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtbWlrZWJ6cGFraXJmb3d6cWpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM3OTgzMTQsImV4cCI6MjEwOTM3NDMxNH0.rsel3RipPL5iR6WPydNiW0FLvtv_tx56mWnVOcvILE8";
 const MONTHLY_TOKEN_LIMIT = 4500;   // gelijk houden met config/settings.yaml
 const ENTER_DAYS = 3;
+const MIN_ALIGNMENT = 0.4;          // gelijk houden met gates.min_alignment_7d en shock_radar.min_alignment
 const NEXT_RUN = "elke ochtend rond 06:15";
 
 const DEMO = new URLSearchParams(location.search).has("demo");
@@ -421,7 +422,7 @@ function approvalsSection() {
     <div class="approvals">${cards}</div>${log}</section>`;
 }
 
-const GATES = [["thesis", "T", "These: alignment 7 dagen ≥ 0,6"], ["horizon", "H", "Horizon ≥ 3 maanden"],
+const GATES = [["thesis", "T", `These: alignment 7 dagen ≥ ${nf1.format(MIN_ALIGNMENT)}`], ["horizon", "H", "Horizon ≥ 3 maanden"],
   ["investable", "M", "Mandje: minstens 4 geldige tickers"], ["unresolved", "L", "Lopend: niet opgelost"]];
 function gatesHtml(g) {
   g = g || {};
@@ -635,8 +636,8 @@ function radarStatus(t, r) {
   if (decided) return `Shock-radar: verzoek ${decided.status === "rejected" ? "afgewezen" : decided.status === "expired" ? "verlopen" : "afgehandeld"}`;
   const until = t.first_seen ? short(new Date(day(t.first_seen).getTime() + 7 * 864e5).toISOString()) : null;
   const missing = [];
-  if (r.alignment == null || r.alignment < 0.6)
-    missing.push(`maar ${pct(r.alignment)} van de artikelen gaat echt over de these (minimaal 60%)`);
+  if (r.alignment == null || r.alignment < MIN_ALIGNMENT)
+    missing.push(`maar ${pct(r.alignment)} van de artikelen gaat echt over de these (minimaal ${pct(MIN_ALIGNMENT)})`);
   if (!t.high_impact && !(r.volume_z >= 3)) missing.push("geen volumepiek");
   if (!missing.length) return "Shock-radar: verzoek volgt bij de volgende run";
   return `Shock-radar, nog geen goedkeuringsverzoek: ${missing.join(" en ")}. Wordt elke dag opnieuw bekeken${until ? `, tot ${until}` : ""}.`;

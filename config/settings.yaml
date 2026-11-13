@@ -40,14 +40,14 @@ narrative:
 
 shock_radar:
   volume_z_threshold: 3.0
-  min_alignment: 0.6
+  min_alignment: 0.4         # proef vanaf 13 nov 2026 (was 0.6)
   approval_hours: 48          # goedkeuring vervalt na 48 uur
   protection_days: 7          # goedgekeurde shock: geen I-exit in deze periode
   mutation_check_after_days: 5
   radar_max_days: 7
 
 gates:
-  min_alignment_7d: 0.6
+  min_alignment_7d: 0.4      # proef vanaf 13 nov 2026 (was 0.6)
   alignment_window_days: 7
   min_tickers: 4
   fail_days_to_exit: 3

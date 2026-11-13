@@ -18,7 +18,7 @@ Elke ochtend bepaalt dit systeem welke macro-thema's de beurs domineren, of ze g
 **Narratief.** R volgt een genormaliseerde EMA (halfwaardetijd 10 dagen, shocks 3 dagen) van `alignment × ln(1 + artikelen)`. Het evenwicht is gelijk aan de input, dus de keuze van de decay geeft geen bias. Ontbrekende data houdt R vast in plaats van naar nul te trekken.
 
 **Harde gates (alle vier).**
-- These: gemiddelde alignment over 7 dagen ≥ 0,6.
+- These: gemiddelde alignment over 7 dagen ≥ 0,4 (proef vanaf 13 november 2026; was 0,6).
 - Horizon ≥ 3 maanden.
 - Mandje: minstens 4 geldige tickers.
 - Niet opgelost.
@@ -38,7 +38,7 @@ Elke ochtend bepaalt dit systeem welke macro-thema's de beurs domineren, of ze g
 - Een uitdager moet het laagste Active topic met 10% verslaan.
 - Topicgewicht is evenredig met I, met een maximum van 25% per topic. De rest staat in cash.
 
-**Shocks.** Een shock gaat eerst naar de radar. Bij een volumepiek (z ≥ 3) of high impact, plus alignment ≥ 0,6, verschijnt een goedkeuringsverzoek in het dashboard. Na toelating volgen 7 dagen bescherming. Vanaf dag 5 vraagt Sonnet of de shock een blijvend knelpunt heeft veroorzaakt. Zo ja, dan wordt het topic structureel (nieuwe versie, nieuwe benchmarks, nieuw mandje).
+**Shocks.** Een shock gaat eerst naar de radar. Bij een volumepiek (z ≥ 3) of high impact, plus alignment ≥ 0,4, verschijnt een goedkeuringsverzoek in het dashboard. Na toelating volgen 7 dagen bescherming. Vanaf dag 5 vraagt Sonnet of de shock een blijvend knelpunt heeft veroorzaakt. Zo ja, dan wordt het topic structureel (nieuwe versie, nieuwe benchmarks, nieuw mandje).
 
 **Stock Search** (aparte fase, maximaal 3 per run). Het zoeken gebeurt bij promotie, mutatie, een nieuwe topic-versie en als een mandje ouder is dan 30 dagen.
 1. Sonnet met web search stelt per rol kandidaten voor, met een bron voor de omzetblootstelling.
