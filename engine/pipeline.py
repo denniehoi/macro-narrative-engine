@@ -798,7 +798,8 @@ class DailyRun:
         holdings, cash = dict(lp.get("holdings", {})), float(lp.get("cash", start_value))
         nav, values = paper.mark_to_market(holdings, cash, prices, fxs, lp.get("values", {}))
         bench_units, start_day = lp.get("bench_units"), lp.get("start_day")
-        if self.snapshot["is_rebalance"] and self.snapshot["targets"]:
+        # Ook een rebalance naar 'geen doelen' (alle topics uit Active) is een rebalance: dan alles verkopen.
+        if self.snapshot["is_rebalance"]:
             # Posities van mandjes die vandaag instapten, kopen we tegen hun (eerste) instapkoers. Bij een
             # herhaalde run op dezelfde dag blijven portefeuille en mandjesrendement zo met elkaar kloppen.
             reb_p, reb_f = dict(prices), dict(fxs)
@@ -809,7 +810,7 @@ class DailyRun:
                             reb_p[m["symbol"]], reb_f[m["symbol"]] = m["entry_price"], m["entry_fx"]
             holdings, cash, _ = paper.rebalance(nav, self.snapshot["targets"], reb_p, reb_f)
             nav, values = paper.mark_to_market(holdings, cash, prices, fxs, {})
-            if bench_units is None:
+            if bench_units is None and self.snapshot["targets"]:
                 bench_entry = next((((b.get("perf") or {}).get("bench_entry_eur")) for b in self.baskets.values()
                                     if str(b.get("entry_day") or "")[:10] == self.day.isoformat()), None) or bench_eur
                 if bench_entry:

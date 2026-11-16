@@ -376,3 +376,35 @@ def test_rejected_merge_is_not_asked_again():
     run.overlaps = [("a", "b")]
     run.merges()
     assert len(store.select("approvals")) == 1
+
+
+def test_exit_of_last_topic_sells_paper_positions():
+    """Als het laatste topic uit Active gaat, moet de papieren portefeuille alles verkopen
+    en daarna vlak blijven (alleen cash)."""
+    store = MemoryStore()
+    ctx = _ctx(store)
+    ctx.market.load([], date(2026, 11, 10))
+    p = ctx.market.last_price("PWR0")
+    holdings = {"PWR0": 25_000 / (p * 0.92)}
+    store.insert("portfolio_snapshots", [{
+        "day": "2026-11-09", "topic_weights": [], "cash": 0.75, "targets": [{"symbol": "PWR0", "weight": 0.25}],
+        "paper": {"nav": 100_000, "cash": 75_000, "holdings": holdings, "values": {"PWR0": 25_000},
+                  "currency": {"PWR0": "USD"}, "start_value": 100_000, "start_day": "2026-11-05",
+                  "bench_units": 700.0, "bench_nav": 100_000}}])
+    run = DailyRun(ctx, date(2026, 11, 10))
+    run.baskets = {}
+    run.snapshot = {"day": date(2026, 11, 10), "targets": [], "is_rebalance": True}
+    run.paper_trading()
+    paper = run.snapshot["paper"]
+    assert paper["holdings"] == {} and paper["nav"] == pytest.approx(paper["cash"])
+    assert paper["nav"] == pytest.approx(75_000 + holdings["PWR0"] * p * 0.92)
+
+    # volgende dag: geen posities, waarde blijft gelijk ook al bewegen koersen
+    store.insert("portfolio_snapshots", [{"day": "2026-11-10", "topic_weights": [], "cash": 1.0, "targets": [],
+                                          "paper": paper}])
+    ctx.market.load([], date(2026, 11, 13))
+    run2 = DailyRun(ctx, date(2026, 11, 13))
+    run2.baskets = {}
+    run2.snapshot = {"day": date(2026, 11, 13), "targets": [], "is_rebalance": False}
+    run2.paper_trading()
+    assert run2.snapshot["paper"]["nav"] == pytest.approx(paper["nav"])
